@@ -1,7 +1,7 @@
 #include "dx4600_leds.h"
 
-int dx4600_leds_t::start() {
-    return _i2c.start("/dev/i2c-1", 0x3a);
+int dx4600_leds_t::start(const char *dev_path, uint8_t dev_addr) {
+    return _i2c.start(dev_path, dev_addr);
 }
 
 static int compute_checksum(const std::vector<uint8_t>& data, int size) {
@@ -29,12 +29,10 @@ static void append_checksum(std::vector<uint8_t>& data) {
     data.push_back(sum & 0xff);
 }
 
-dx4600_leds_t::led_data_t dx4600_leds_t::get_status(int id) {
+dx4600_leds_t::led_data_t dx4600_leds_t::get_status(led_type_t id) {
     led_data_t data { };
 
-    if (id < 0 || id > 6) return data;
-
-    auto raw_data = _i2c.read_block_data(0x81 + id, 0xb);
+    auto raw_data = _i2c.read_block_data(0x81 + (uint8_t)id, 0xb);
     if (raw_data.size() != 0xb || !verify_checksum(raw_data)) 
         return data;
 
@@ -59,42 +57,44 @@ dx4600_leds_t::led_data_t dx4600_leds_t::get_status(int id) {
     return data;
 }
 
-int dx4600_leds_t::_change_status(int id, uint8_t command, std::array<uint8_t, 3> params) {
-    if (id < 0 || id > 6) return 0;
-
+int dx4600_leds_t::_change_status(led_type_t id, uint8_t command, std::array<std::optional<uint8_t>, 4> params) {
     std::vector<uint8_t> data {
     //   3c    3b    3a
         0x00, 0xa0, 0x01,
     //     39        38         37
-    //     36        35         34
         0x00, 0x00, command, 
-        params[0], params[1], params[2]
+    //     36 - 33
+        params[0].value_or(0x00), 
+        params[1].value_or(0x00), 
+        params[2].value_or(0x00), 
+        params[3].value_or(0x00), 
     };
 
     append_checksum(data);
-    data[0] = id;
-    return _i2c.write_block_data(id, data);
+    data[0] = (uint8_t)id;
+    return _i2c.write_block_data((uint8_t)id, data);
 }
 
-int dx4600_leds_t::set_onoff(int id, uint8_t status) {
-    return _change_status(id, 0x03, { status, 0x00, 0x00 } );
+int dx4600_leds_t::set_onoff(led_type_t id, uint8_t status) {
+    if (status >= 2) return -1;
+    return _change_status(id, 0x03, { status } );
 }
 
-int dx4600_leds_t::set_blink(int id, uint16_t t_on, uint16_t t_off) {
+int dx4600_leds_t::set_blink(led_type_t id, uint16_t t_on, uint16_t t_off) {
     uint16_t t_hight = t_on + t_off;
     uint16_t t_low = t_on;
     return _change_status(id, 0x04, { 
         (uint8_t)(t_hight >> 8), 
         (uint8_t)(t_hight & 0xff), 
         (uint8_t)(t_low >> 8),
-//            (uint8_t)(t_low & 0xff)
+        (uint8_t)(t_low & 0xff),
     } );
 }
 
-int dx4600_leds_t::set_rgb(int id, uint8_t r, uint8_t g, uint8_t b) {
+int dx4600_leds_t::set_rgb(led_type_t id, uint8_t r, uint8_t g, uint8_t b) {
     return _change_status(id, 0x02, { r, g, b } );
 }
 
-int dx4600_leds_t::set_brightness(int id, uint8_t brightness) {
-    return _change_status(id, 0x01, { brightness, 0x00, 0x00 } );
+int dx4600_leds_t::set_brightness(led_type_t id, uint8_t brightness) {
+    return _change_status(id, 0x01, { brightness } );
 }

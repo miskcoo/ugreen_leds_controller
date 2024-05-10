@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 #include <vector>
-#include <array>
 
 class i2c_device_t {
 
