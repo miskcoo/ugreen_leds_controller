@@ -18,10 +18,17 @@ Below is an example:
 It can be archived by the following commands:
 ```bash
 sudo ./dx4600_leds_cli all -off -status
-for led in power netdev disk1 disk2 disk3 disk4; do
-    sudo ./dx4600_leds_cli $led -blink 400 600 -status
-    sleep 0.1
-done
+sudo ./dx4600_leds_cli power  -color 255 0 255 -blink 400 600 -status
+sleep 0.1
+sudo ./dx4600_leds_cli netdev -color 255 0 0   -blink 400 600 -status
+sleep 0.1
+sudo ./dx4600_leds_cli disk1  -color 255 255 0 -blink 400 600 -status
+sleep 0.1
+sudo ./dx4600_leds_cli disk2  -color 0 255 0   -blink 400 600 -status
+sleep 0.1
+sudo ./dx4600_leds_cli disk3  -color 0 255 255 -blink 400 600 -status
+sleep 0.1
+sudo ./dx4600_leds_cli disk4  -color 0 0 255   -blink 400 600 -status
 ```
 
 ## Preparation
