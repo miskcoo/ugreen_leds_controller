@@ -15,6 +15,15 @@ Below is an example:
 
 ![](https://blog.miskcoo.com/assets/images/dx4600-pro-leds.gif)
 
+It can be archived by the following commands:
+```bash
+sudo ./dx4600_leds_cli all -off -status
+for led in power netdev disk1 disk2 disk3 disk4; do
+    sudo ./dx4600_leds_cli $led -blink 400 600 -status
+    sleep 0.1
+done
+```
+
 ## Preparation
 
 We communicate with the control chip of the LED via I2C, corresponding to the device with address `0x3a` on `/dev/i2c-1`. Before proceeding, we need to load the `i2c-dev` module and install the `i2c-tools` tool.
