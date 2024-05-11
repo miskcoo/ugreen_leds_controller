@@ -47,6 +47,8 @@ public:
     int set_rgb(led_type_t id, uint8_t r, uint8_t g, uint8_t b);
     int set_brightness(led_type_t id, uint8_t brightness);
 
+    bool is_last_modification_successful();
+
 private:
     int _change_status(led_type_t id, uint8_t command, std::array<std::optional<uint8_t>, 4> params);
 };

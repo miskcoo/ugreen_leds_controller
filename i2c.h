@@ -15,6 +15,7 @@ public:
     int start(const char *filename, uint16_t addr);
     std::vector<uint8_t> read_block_data(uint8_t command, uint32_t size);
     int write_block_data(uint8_t command, std::vector<uint8_t> data);
+    uint8_t read_byte_data(uint8_t command);
 
 };
 

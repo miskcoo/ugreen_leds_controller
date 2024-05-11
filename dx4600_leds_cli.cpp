@@ -217,8 +217,22 @@ int main(int argc, char *argv[])
 
     for (const auto& led : leds) {
         for (const auto& fn : ops_seq) {
-            usleep(USLEEP_INTERVAL);
-            fn(led);
+            int last_status = -1;
+
+            for (int retry_cnt = 0; retry_cnt < 3 && last_status != 0; ++retry_cnt) {
+
+                usleep(USLEEP_INTERVAL);
+                last_status = fn(led);
+
+                if (last_status == 0) {
+                    usleep(USLEEP_INTERVAL);
+                    last_status = !leds_controller.is_last_modification_successful();
+                }
+            }
+
+            if (last_status != 0) {
+                std::cerr << "failed to change status!" << std::endl;
+            }
         }
     }
     

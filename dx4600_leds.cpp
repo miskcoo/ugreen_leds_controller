@@ -98,3 +98,7 @@ int dx4600_leds_t::set_rgb(led_type_t id, uint8_t r, uint8_t g, uint8_t b) {
 int dx4600_leds_t::set_brightness(led_type_t id, uint8_t brightness) {
     return _change_status(id, 0x01, { brightness } );
 }
+
+bool dx4600_leds_t::is_last_modification_successful() {
+    return _i2c.read_byte_data(0x80) == 1;
+}

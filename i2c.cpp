@@ -81,3 +81,20 @@ int i2c_device_t::write_block_data(uint8_t command, std::vector<uint8_t> data) {
     return rc;
 }
 
+uint8_t i2c_device_t::read_byte_data(uint8_t command) {
+    if (!_fd) return { };
+
+    i2c_smbus_data smbus_data;
+
+    i2c_smbus_ioctl_data ioctl_data;
+    ioctl_data.size = I2C_SMBUS_BYTE_DATA;
+    ioctl_data.read_write = I2C_SMBUS_READ;
+    ioctl_data.command = command;
+    ioctl_data.data = &smbus_data;
+
+    int rc = ioctl(_fd, I2C_SMBUS, &ioctl_data);
+
+    if (rc < 0) return { };
+
+    return smbus_data.byte & 0xff;
+}
