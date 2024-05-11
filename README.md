@@ -5,6 +5,12 @@ UGREEN's DX4600 Pro is a four-bay NAS with a built-in system based on OpenWRT ca
 
 This repository describes the control logic of UGOS for these LED lights and provides a command-line tool to control them. For the process of understanding this control logic, please refer to [my blog (in Chinese)](https://blog.miskcoo.com/2024/05/ugreen-dx4600-pro-led-controller).
 
+**WARNING:** Only tested on the following devices. I suspect that it works for all DX4600 series.
+
+- [ ] UGREEN DX4600
+- [ ] UGREEN DX4600+
+- [x] UGREEN DX4600 Pro 
+
 ## Preparation
 
 We communicate with the control chip of the LED via I2C, corresponding to the device with address `0x3a` on `/dev/i2c-1`. Before proceeding, we need to load the `i2c-dev` module and install the `i2c-tools` tool.
