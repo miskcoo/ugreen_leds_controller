@@ -232,6 +232,7 @@ int main(int argc, char *argv[])
 
             if (last_status != 0) {
                 std::cerr << "failed to change status!" << std::endl;
+                return -1;
             }
         }
     }
