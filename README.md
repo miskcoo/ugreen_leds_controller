@@ -145,7 +145,7 @@ For the four different modification types at address 0x05:
 - If we need to toggle the on/off state, the first parameter is either 0 or 1, representing off or on, respectively.
 - If we need to set the blink state, the first two parameters together form a 16-bit unsigned integer in big-endian order, representing the number of milliseconds needed to complete one blink cycle. The next two parameters, also in big-endian order, represent the number of milliseconds the LED is on during one blink cycle.
 
-Using the `i2cset`, the content at `0x00` should be ignored. The actual command requires writing the following 11 bytes. Below is an example command line for turning off and on the power indicator light:
+Using the `i2cset`, the content at `0x00` should be ignored. The actual command requires writing the following 11 bytes. Below is an example for turning off and on the power indicator light:
 
 ```
 $ i2cset -y 0x01 0x3a 0x00  0xa0 0x01 0x00 0x00 0x03 0x01 0x00 0x00 0x00 0x00 0xa5 s    # turn off power LED
