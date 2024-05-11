@@ -216,7 +216,10 @@ int main(int argc, char *argv[])
     }
 
     for (const auto& led : leds) {
-        for (const auto& fn : ops_seq) fn(led);
+        for (const auto& fn : ops_seq) {
+            usleep(USLEEP_INTERVAL);
+            fn(led);
+        }
     }
     
 

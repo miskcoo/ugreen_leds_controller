@@ -1,3 +1,4 @@
 kmod
 *.o
-dx4600_leds
+dx4600_leds_cli
+run.sh
