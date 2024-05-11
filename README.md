@@ -9,7 +9,11 @@ This repository describes the control logic of UGOS for these LED lights and pro
 
 - [ ] UGREEN DX4600
 - [ ] UGREEN DX4600+
-- [x] UGREEN DX4600 Pro 
+- [x] UGREEN DX4600 Pro
+
+Below is an example:
+
+![](https://blog.miskcoo.com/assets/images/dx4600-pro-leds.gif)
 
 ## Preparation
 
