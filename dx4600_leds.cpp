@@ -1,7 +1,31 @@
 #include "dx4600_leds.h"
+#include <string>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 
-int dx4600_leds_t::start(const char *dev_path, uint8_t dev_addr) {
-    return _i2c.start(dev_path, dev_addr);
+#define I2C_DEV_PATH  "/sys/class/i2c-dev/"
+
+int dx4600_leds_t::start() {
+    namespace fs = std::filesystem;
+
+    if (!fs::exists(I2C_DEV_PATH))
+        return -1;
+
+    for (const auto& entry : fs::directory_iterator(I2C_DEV_PATH)) {
+        if (entry.is_directory()) {
+            std::ifstream ifs(entry.path() / "device/name");
+            std::string line;
+            std::getline(ifs, line);
+
+            if (line.rfind("SMBus I801 adapter", 0) == 0) {
+                const auto i2c_dev = "/dev/" + entry.path().filename().string();
+                return _i2c.start(i2c_dev.c_str(), DX4600_LED_I2C_ADDR);
+            }
+        }
+    }
+
+    return -1;
 }
 
 static int compute_checksum(const std::vector<uint8_t>& data, int size) {

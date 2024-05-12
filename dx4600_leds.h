@@ -13,7 +13,7 @@
 #define DX4600_LED_DISK3    dx4600_leds_t::led_type_t::disk3
 #define DX4600_LED_DISK4    dx4600_leds_t::led_type_t::disk4
 
-#define DX4600_LED_I2C_DEV   "/dev/i2c-1"
+// #define DX4600_LED_I2C_DEV   "/dev/i2c-1"
 #define DX4600_LED_I2C_ADDR  0x3a
 
 class dx4600_leds_t {
@@ -39,7 +39,7 @@ public:
     };
 
 public:
-    int start(const char *dev_path = DX4600_LED_I2C_DEV, uint8_t dev_addr = DX4600_LED_I2C_ADDR);
+    int start();
 
     led_data_t get_status(led_type_t id);
     int set_onoff(led_type_t id, uint8_t status);
