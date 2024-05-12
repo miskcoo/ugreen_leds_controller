@@ -80,10 +80,10 @@ int dx4600_leds_t::set_onoff(led_type_t id, uint8_t status) {
     return _change_status(id, 0x03, { status } );
 }
 
-int dx4600_leds_t::set_blink(led_type_t id, uint16_t t_on, uint16_t t_off) {
+int dx4600_leds_t::_set_blink_or_breath(uint8_t command, led_type_t id, uint16_t t_on, uint16_t t_off) {
     uint16_t t_hight = t_on + t_off;
     uint16_t t_low = t_on;
-    return _change_status(id, 0x04, { 
+    return _change_status(id, command, { 
         (uint8_t)(t_hight >> 8), 
         (uint8_t)(t_hight & 0xff), 
         (uint8_t)(t_low >> 8),
@@ -101,4 +101,12 @@ int dx4600_leds_t::set_brightness(led_type_t id, uint8_t brightness) {
 
 bool dx4600_leds_t::is_last_modification_successful() {
     return _i2c.read_byte_data(0x80) == 1;
+}
+
+int dx4600_leds_t::set_blink(led_type_t id, uint16_t t_on, uint16_t t_off) {
+    return _set_blink_or_breath(0x04, id, t_on, t_off);
+}
+
+int dx4600_leds_t::set_breath(led_type_t id, uint16_t t_on, uint16_t t_off) {
+    return _set_blink_or_breath(0x05, id, t_on, t_off);
 }

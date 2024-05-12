@@ -56,14 +56,14 @@ void show_leds_info(dx4600_leds_t &leds_controller, const std::vector<led_type_p
 
 void show_help() {
     std::cerr 
-        << "Usage: dx4600_leds  [LED-NAME...] [-on] [-off] [-blink T_ON T_OFF]\n"
+        << "Usage: dx4600_leds  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]\n"
            "                    [-color R G B] [-brightness BRIGHTNESS] [-status]\n\n"
            "       LED_NAME:    separated by white space, possible values are\n"
            "                    { power, netdev, disk1, disk2, disk3, disk4, all }.\n"
            "       -on / -off:  turn on / off corresponding LEDs.\n"
-           "       -blink:      set LED to the blink status. This status keeps the\n"
-           "                    LED on for T_ON millseconds and then keeps it off\n"
-           "                    for T_OFF millseconds. \n"
+           "       -blink / -breath:  set LED to the blink / breath status. This \n"
+           "                    status keeps the LED on for T_ON millseconds and then\n"
+           "                    keeps it off for T_OFF millseconds. \n"
            "                    T_ON and T_OFF should belong to [0, 65535].\n"
            "       -color:      set the color of corresponding LEDs.\n"
            "                    R, G and B should belong to [0, 255].\n"
@@ -153,12 +153,12 @@ int main(int argc, char *argv[])
             } );
 
             args.pop_front();
-        } else if(args.front() == "-blink") {
+        } else if(args.front() == "-blink" || args.front() == "-breath") {
             // set blink
             args.pop_front();
 
             if (args.size() < 2) {
-                std::cerr << "Err: -blink requires 2 parameters" << std::endl;
+                std::cerr << "Err: -blink / -breath requires 2 parameters" << std::endl;
                 show_help_and_exit();
             }
 
@@ -166,8 +166,14 @@ int main(int argc, char *argv[])
             args.pop_front();
             uint16_t t_off = parse_integer(args.front(), 0x0000, 0xffff);
             args.pop_front();
+
+            bool is_blink = (args.front() == "-blink");
             ops_seq.emplace_back( [=, &leds_controller](led_type_pair led) {
-                return leds_controller.set_blink(led.second, t_on, t_off);
+                if (is_blink) {
+                    return leds_controller.set_blink(led.second, t_on, t_off);
+                } else {
+                    return leds_controller.set_breath(led.second, t_on, t_off);
+                }
             } );
         } else if(args.front() == "-color") {
             // set color

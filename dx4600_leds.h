@@ -43,13 +43,15 @@ public:
 
     led_data_t get_status(led_type_t id);
     int set_onoff(led_type_t id, uint8_t status);
-    int set_blink(led_type_t id, uint16_t t_on, uint16_t t_off);
     int set_rgb(led_type_t id, uint8_t r, uint8_t g, uint8_t b);
     int set_brightness(led_type_t id, uint8_t brightness);
+    int set_blink(led_type_t id, uint16_t t_on, uint16_t t_off);
+    int set_breath(led_type_t id, uint16_t t_on, uint16_t t_off);
 
     bool is_last_modification_successful();
 
 private:
+    int _set_blink_or_breath(uint8_t command, led_type_t id, uint16_t t_on, uint16_t t_off);
     int _change_status(led_type_t id, uint8_t command, std::array<std::optional<uint8_t>, 4> params);
 };
 

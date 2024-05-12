@@ -67,13 +67,13 @@ After cloning the current repository, use `make` to build this project. Once the
 ## Usage
 
 ```
-Usage: dx4600_leds_cli  [LED-NAME...] [-on] [-off] [-blink T_ON T_OFF]
+Usage: dx4600_leds_cli  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]
                     [-color R G B] [-brightness BRIGHTNESS] [-status]
 
        LED_NAME:    separated by white space, possible values are
                     { power, netdev, disk1, disk2, disk3, disk4, all }.
        -on / -off:  turn on / off corresponding LEDs.
-       -blink:      set LED to the blink status. This status keeps the
+       -blink / -breath: set LED to the blink / breath status. This status keeps the
                     LED on for T_ON millseconds and then keeps it off
                     for T_OFF millseconds.
                     T_ON and T_OFF should belong to [0, 65535].
@@ -119,10 +119,10 @@ Reading 11 bytes from the address `0x81 + LED_ID` allows us to obtain the curren
 | 0x02    | LED color (Red component in RGB) |
 | 0x03    | LED color (Green component in RGB) |
 | 0x04    | LED color (Blue component in RGB) |
-| 0x05    | Milliseconds needed to complete one blink cycle (high 8 bits) |
-| 0x06    | Milliseconds needed to complete one blink cycle (low 8 bits) |
-| 0x07    | Milliseconds the LED is on during one blink cycle (high 8 bits) |
-| 0x08    | Milliseconds the LED is on during one blink cycle (low 8 bits) |
+| 0x05    | Milliseconds needed to complete one blink / breath cycle (high 8 bits) |
+| 0x06    | Milliseconds needed to complete one blink / breath cycle (low 8 bits) |
+| 0x07    | Milliseconds the LED is on during one blink / breath cycle (high 8 bits) |
+| 0x08    | Milliseconds the LED is on during one blink / breath cycle (low 8 bits) |
 | 0x09    | Checksum of data in the range 0x00 - 0x08 (high 8 bits) |
 | 0x0a    | Checksum of data in the range 0x00 - 0x08 (low 8 bits) |
 
@@ -146,7 +146,7 @@ By writing 12 bytes to the address `0x00 + LED_ID`, we can modify the current st
 | 0x02    | Constant: 0x01 |
 | 0x03    | Constant: 0x00 |
 | 0x04    | Constant: 0x00 |
-| 0x05    | If the value is 1, it indicates modifying brightness. <br/>If the value is 2, it indicates modifying color. <br/>If the value is 3, it indicates setting the on/off state.<br/>If the value is 4, it indicates setting the blink state. |
+| 0x05    | If the value is 1, it indicates modifying brightness. <br/>If the value is 2, it indicates modifying color. <br/>If the value is 3, it indicates setting the on/off state.<br/>If the value is 4 / 5, it indicates setting the blink / breath state. |
 | 0x06    | First parameter |
 | 0x07    | Second parameter |
 | 0x08    | Third parameter |
@@ -159,7 +159,7 @@ For the four different modification types at address 0x05:
 - If we need to modify brightness, the first parameter contains brightness information.
 - If we need to modify color, the first three parameters represent RGB information.
 - If we need to toggle the on/off state, the first parameter is either 0 or 1, representing off or on, respectively.
-- If we need to set the blink state, the first two parameters together form a 16-bit unsigned integer in big-endian order, representing the number of milliseconds needed to complete one blink cycle. The next two parameters, also in big-endian order, represent the number of milliseconds the LED is on during one blink cycle.
+- If we need to set the blink / breath state, the first two parameters together form a 16-bit unsigned integer in big-endian order, representing the number of milliseconds needed to complete one blink / breath cycle. The next two parameters, also in big-endian order, represent the number of milliseconds the LED is on during one blink / breath cycle.
 
 Below is an example for turning off and on the power indicator light using `i2cset`:
 
