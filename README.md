@@ -73,9 +73,9 @@ Usage: dx4600_leds_cli  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]
        LED_NAME:    separated by white space, possible values are
                     { power, netdev, disk1, disk2, disk3, disk4, all }.
        -on / -off:  turn on / off corresponding LEDs.
-       -blink / -breath: set LED to the blink / breath status. This status keeps the
-                    LED on for T_ON millseconds and then keeps it off
-                    for T_OFF millseconds.
+       -blink / -breath:  set LED to the blink / breath mode. This
+                    mode keeps the LED on for T_ON millseconds and then
+                    keeps it off for T_OFF millseconds.
                     T_ON and T_OFF should belong to [0, 65535].
        -color:      set the color of corresponding LEDs.
                     R, G and B should belong to [0, 255].

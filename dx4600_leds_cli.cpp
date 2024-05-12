@@ -56,13 +56,13 @@ void show_leds_info(dx4600_leds_t &leds_controller, const std::vector<led_type_p
 
 void show_help() {
     std::cerr 
-        << "Usage: dx4600_leds  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]\n"
+        << "Usage: dx4600_leds_cli  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]\n"
            "                    [-color R G B] [-brightness BRIGHTNESS] [-status]\n\n"
            "       LED_NAME:    separated by white space, possible values are\n"
            "                    { power, netdev, disk1, disk2, disk3, disk4, all }.\n"
            "       -on / -off:  turn on / off corresponding LEDs.\n"
-           "       -blink / -breath:  set LED to the blink / breath status. This \n"
-           "                    status keeps the LED on for T_ON millseconds and then\n"
+           "       -blink / -breath:  set LED to the blink / breath mode. This \n"
+           "                    mode keeps the LED on for T_ON millseconds and then\n"
            "                    keeps it off for T_OFF millseconds. \n"
            "                    T_ON and T_OFF should belong to [0, 65535].\n"
            "       -color:      set the color of corresponding LEDs.\n"
