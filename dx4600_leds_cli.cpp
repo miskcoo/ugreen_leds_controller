@@ -142,13 +142,15 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    std::vector<std::function<int(led_type_pair)>> ops_seq;
+    // (is_modification, callback)
+    using ops_pair = std::pair<bool, std::function<int(led_type_pair)>>;
+    std::vector<ops_pair> ops_seq;
 
     while (!args.empty()) {
         if (args.front() == "-on" || args.front() == "-off") {
             // turn on / off LEDs
             uint8_t status = args.front() == "-on";
-            ops_seq.emplace_back( [=, &leds_controller](led_type_pair led) {
+            ops_seq.emplace_back(true, [=, &leds_controller](led_type_pair led) {
                 return leds_controller.set_onoff(led.second, status);
             } );
 
@@ -168,7 +170,7 @@ int main(int argc, char *argv[])
             args.pop_front();
 
             bool is_blink = (args.front() == "-blink");
-            ops_seq.emplace_back( [=, &leds_controller](led_type_pair led) {
+            ops_seq.emplace_back(true, [=, &leds_controller](led_type_pair led) {
                 if (is_blink) {
                     return leds_controller.set_blink(led.second, t_on, t_off);
                 } else {
@@ -190,7 +192,7 @@ int main(int argc, char *argv[])
             args.pop_front();
             uint8_t B = parse_integer(args.front(), 0x00, 0xff);
             args.pop_front();
-            ops_seq.emplace_back( [=, &leds_controller](led_type_pair led) {
+            ops_seq.emplace_back(true, [=, &leds_controller](led_type_pair led) {
                 return leds_controller.set_rgb(led.second, R, G, B);
             } );
         } else if(args.front() == "-brightness") {
@@ -204,14 +206,14 @@ int main(int argc, char *argv[])
 
             uint8_t brightness = parse_integer(args.front(), 0x00, 0xff);
             args.pop_front();
-            ops_seq.emplace_back( [=, &leds_controller](led_type_pair led) {
+            ops_seq.emplace_back(true, [=, &leds_controller](led_type_pair led) {
                 return leds_controller.set_brightness(led.second, brightness);
             } );
         } else if(args.front() == "-status") {
             // display the status
             args.pop_front();
 
-            ops_seq.emplace_back( [=, &leds_controller](led_type_pair led) {
+            ops_seq.emplace_back(false, [=, &leds_controller](led_type_pair led) {
                 show_leds_info(leds_controller, { led } );
                 return 0;
             } );
@@ -222,7 +224,9 @@ int main(int argc, char *argv[])
     }
 
     for (const auto& led : leds) {
-        for (const auto& fn : ops_seq) {
+        for (const auto& fn_pair : ops_seq) {
+            bool is_modification = fn_pair.first;
+            const auto &fn = fn_pair.second;
             int last_status = -1;
 
             for (int retry_cnt = 0; retry_cnt < 3 && last_status != 0; ++retry_cnt) {
@@ -230,7 +234,7 @@ int main(int argc, char *argv[])
                 usleep(USLEEP_INTERVAL);
                 last_status = fn(led);
 
-                if (last_status == 0) {
+                if (last_status == 0 && is_modification) {
                     usleep(USLEEP_INTERVAL);
                     last_status = !leds_controller.is_last_modification_successful();
                 }
