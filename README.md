@@ -11,6 +11,11 @@ This repository describes the control logic of UGOS for these LED lights and pro
 - [ ] UGREEN DX4600+
 - [x] UGREEN DX4600 Pro
 
+**I am not sure whether this is compatible to the new 4800 / 6800 series devices. If someone with the new device could provide a copy of the latest UGOS, I may have a look on its driver when time permits.**
+
+**TODO:**
+- [ ] This is only a commandline tool. It would be nice to write a driver to register the LEDs in `/sys/class/led`.
+
 Below is an example:
 
 ![](https://blog.miskcoo.com/assets/images/dx4600-pro-leds.gif)
