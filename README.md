@@ -13,6 +13,8 @@ This repository describes the control logic of UGOS for these LED lights and pro
 
 **I am not sure whether this is compatible with the new 4800 / 6800 series devices. If someone with the new device could provide a copy of the latest UGOS, I may have a look on its driver when time permits.**
 
+For the DXP8800 Plus, [this repo](https://github.com/meyergru/ugreen_dxp8800_leds_controller) reported that the code also works, with the LED_ID taking values between 0-9.
+
 **TODO:**
 - [ ] This is only a commandline tool. It would be nice to write a driver to register the LEDs in `/sys/class/led`.
 
