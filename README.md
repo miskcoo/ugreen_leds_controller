@@ -10,19 +10,18 @@ This repository describes the control logic of UGOS for these LED lights and pro
 - [ ] UGREEN DX4600
 - [ ] UGREEN DX4600+
 - [x] UGREEN DX4600 Pro
+- [x] UGREEN DXP8800 Plus (see [this repo](https://github.com/meyergru/ugreen_dxp8800_leds_controller))
 
 **I am not sure whether this is compatible with the new 4800 / 6800 series devices. If someone with the new device could provide a copy of the latest UGOS, I may have a look on its driver when time permits.**
 
-For the DXP8800 Plus, [this repo](https://github.com/meyergru/ugreen_dxp8800_leds_controller) reported that the code also works, with the LED_ID taking values between 0-9.
-
 **TODO:**
-- [ ] This is only a commandline tool. It would be nice to write a driver to register the LEDs in `/sys/class/led`.
+- [ ] This is only a commandline tool. It would be nice to write a driver to register the LEDs in `/sys/class/leds`.
 
 Below is an example:
 
 ![](https://blog.miskcoo.com/assets/images/dx4600-pro-leds.gif)
 
-It can be archived by the following commands:
+It can be achieved by the following commands:
 ```bash
 sudo ./dx4600_leds_cli all -off -status
 sudo ./dx4600_leds_cli power  -color 255 0 255 -blink 400 600 -status
