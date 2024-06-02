@@ -5,7 +5,7 @@ UGREEN's DX4600 Pro is a four-bay NAS with a built-in system based on OpenWRT ca
 
 This repository describes the control logic of UGOS for these LED lights and provides a command-line tool to control them. For the process of understanding this control logic, please refer to [my blog (in Chinese)](https://blog.miskcoo.com/2024/05/ugreen-dx4600-pro-led-controller).
 
-**WARNING:** Only tested on the following devices. I guess that it works for all DX4600 series.
+**WARNING:** Only tested on the following devices. I guess that it works for all DX4600 series. For other devices, please follow the [Preparation](#Preparation) section to check if the protocol is compatible, and run `./ugreen_leds_cli all` to see which LEDs are supported by this tool.
 
 - [ ] UGREEN DX4600
 - [ ] UGREEN DX4600+
@@ -23,18 +23,18 @@ Below is an example:
 
 It can be achieved by the following commands:
 ```bash
-sudo ./dx4600_leds_cli all -off -status
-sudo ./dx4600_leds_cli power  -color 255 0 255 -blink 400 600 -status
+sudo ./ugreen_leds_cli all -off -status
+sudo ./ugreen_leds_cli power  -color 255 0 255 -blink 400 600 -status
 sleep 0.1
-sudo ./dx4600_leds_cli netdev -color 255 0 0   -blink 400 600 -status
+sudo ./ugreen_leds_cli netdev -color 255 0 0   -blink 400 600 -status
 sleep 0.1
-sudo ./dx4600_leds_cli disk1  -color 255 255 0 -blink 400 600 -status
+sudo ./ugreen_leds_cli disk1  -color 255 255 0 -blink 400 600 -status
 sleep 0.1
-sudo ./dx4600_leds_cli disk2  -color 0 255 0   -blink 400 600 -status
+sudo ./ugreen_leds_cli disk2  -color 0 255 0   -blink 400 600 -status
 sleep 0.1
-sudo ./dx4600_leds_cli disk3  -color 0 255 255 -blink 400 600 -status
+sudo ./ugreen_leds_cli disk3  -color 0 255 255 -blink 400 600 -status
 sleep 0.1
-sudo ./dx4600_leds_cli disk4  -color 0 0 255   -blink 400 600 -status
+sudo ./ugreen_leds_cli disk4  -color 0 0 255   -blink 400 600 -status
 ```
 
 ## Preparation
@@ -68,16 +68,16 @@ $ i2cdetect -y 1
 
 ## Build
 
-After cloning the current repository, use `make` to build this project. Once the build is complete, we can use `dx4600_leds_cli` to modify the LED states (requires root permissions).
+After cloning the current repository, use `make` to build this project. Once the build is complete, we can use `ugreen_leds_cli` to modify the LED states (requires root permissions).
 
 ## Usage
 
 ```
-Usage: dx4600_leds_cli  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]
+Usage: ugreen_leds_cli  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]
                     [-color R G B] [-brightness BRIGHTNESS] [-status]
 
        LED_NAME:    separated by white space, possible values are
-                    { power, netdev, disk1, disk2, disk3, disk4, all }.
+                    { power, netdev, disk[1-8], all }.
        -on / -off:  turn on / off corresponding LEDs.
        -blink / -breath:  set LED to the blink / breath mode. This
                     mode keeps the LED on for T_ON millseconds and then
@@ -94,16 +94,16 @@ Usage: dx4600_leds_cli  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]
 
 ```bash
 # turn on all LEDs
-sudo ./dx4600_leds_cli all -on
+sudo ./ugreen_leds_cli all -on
 
 # query LEDs' status
-sudo ./dx4600_leds_cli all -status
+sudo ./ugreen_leds_cli all -status
 
 # turn on the power indicator,
 # and then set its color to blue,
 # and then set its brightness to 128 / 256,
 # and finally display its status
-sudo ./dx4600_leds_cli power -on -color 0 0 255 -brightness 128 -status
+sudo ./ugreen_leds_cli power -on -color 0 0 255 -brightness 128 -status
 ```
 
 ## Communication Protocols
