@@ -41,9 +41,6 @@ void show_leds_info(ugreen_leds_t &leds_controller, const std::vector<led_type_p
         usleep(USLEEP_INTERVAL);
         auto data = leds_controller.get_status(led.second);
 
-        led_availability[led.second] = data.is_available;
-        if (!data.is_available) break;
-
         std::string op_mode_txt = "unknown";
 
         switch(data.op_mode) {
