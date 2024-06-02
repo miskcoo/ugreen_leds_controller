@@ -9,7 +9,10 @@
 
 #include "ugreen_leds.h"
 
-#define USLEEP_INTERVAL 1500
+#define USLEEP_READ_STATUS_INTERVAL 8000
+#define USLEEP_MODIFICATION_INTERVAL 500
+#define USLEEP_MODIFICATION_RETRY_INTERVAL 30000
+#define USLEEP_MODIFICATION_QUERY_RESULT_INTERVAL 2000
 
 static std::map<std::string, ugreen_leds_t::led_type_t> led_name_map = {
     { "power",  UGREEN_LED_POWER },
@@ -25,21 +28,17 @@ static std::map<std::string, ugreen_leds_t::led_type_t> led_name_map = {
 };
 
 using led_type_pair = std::pair<std::string, ugreen_leds_t::led_type_t>;
-std::map<ugreen_leds_t::led_type_t, bool> led_availability;
-
-bool is_led_available(ugreen_leds_t &leds_controller, ugreen_leds_t::led_type_t led) {
-    auto it = led_availability.find(led);
-    if (it != led_availability.end())
-        return it->second;
-    usleep(USLEEP_INTERVAL);
-    return led_availability[led] = leds_controller.get_status(led).is_available;
-}
 
 void show_leds_info(ugreen_leds_t &leds_controller, const std::vector<led_type_pair>& leds) {
 
     for (auto led : leds ) {
-        usleep(USLEEP_INTERVAL);
+        usleep(USLEEP_READ_STATUS_INTERVAL);
         auto data = leds_controller.get_status(led.second);
+
+        if (!data.is_available) {
+            std::printf("%s: unavailable or non-existent\n", led.first.c_str());
+            continue;
+        }
 
         std::string op_mode_txt = "unknown";
 
@@ -83,7 +82,6 @@ void show_help() {
            "       -brightness: set the brightness of corresponding LEDs.\n"
            "                    BRIGHTNESS should belong to [0, 255].\n"
            "       -status:     display the status of corresponding LEDs.\n"
-           "       -probe:      display the available LEDs.\n"
         << std::endl;
 }
 
@@ -129,6 +127,8 @@ int main(int argc, char *argv[])
     ugreen_leds_t leds_controller;
     if (leds_controller.start() != 0) {
         std::cerr << "Err: fail to open the I2C device." << std::endl;
+        std::cerr << "Please check that (1) you have the root permission; " << std::endl;
+        std::cerr << "              and (2) the i2c-dev module is loaded. " << std::endl;
         return -1;
     }
 
@@ -142,16 +142,11 @@ int main(int argc, char *argv[])
     while (!args.empty() && args.front().front() != '-') {
         if (args.front() == "all") {
             for (const auto &v : led_name_map) {
-                if (is_led_available(leds_controller, v.second))
                     leds.push_back(v);
             }
         } else {
             auto led_type = get_led_type(args.front());
             leds.emplace_back(args.front(), led_type);
-            if (!is_led_available(leds_controller, led_type)) {
-                std::cerr << args.front() << " is not available." << std::endl;
-                return -1;
-            }
         }
 
         args.pop_front();
@@ -252,11 +247,17 @@ int main(int argc, char *argv[])
 
             for (int retry_cnt = 0; retry_cnt < 3 && last_status != 0; ++retry_cnt) {
 
-                usleep(USLEEP_INTERVAL);
+                if (retry_cnt == 0) {
+                    if (is_modification) 
+                        usleep(USLEEP_MODIFICATION_INTERVAL);  // usleep_range(200, 0x5dc)
+                } else {
+                    usleep(USLEEP_MODIFICATION_RETRY_INTERVAL);  
+                }
+
                 last_status = fn(led);
 
                 if (last_status == 0 && is_modification) {
-                    usleep(USLEEP_INTERVAL);
+                    usleep(USLEEP_MODIFICATION_QUERY_RESULT_INTERVAL);  
                     last_status = !leds_controller.is_last_modification_successful();
                 }
             }
