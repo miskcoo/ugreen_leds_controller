@@ -9,9 +9,11 @@
 
 #include "ugreen_leds.h"
 
+#define MAX_RETRY_COUNT 5
 #define USLEEP_READ_STATUS_INTERVAL 8000
+#define USLEEP_READ_STATUS_RETRY_INTERVAL 3000
 #define USLEEP_MODIFICATION_INTERVAL 500
-#define USLEEP_MODIFICATION_RETRY_INTERVAL 30000
+#define USLEEP_MODIFICATION_RETRY_INTERVAL 3000
 #define USLEEP_MODIFICATION_QUERY_RESULT_INTERVAL 2000
 
 static std::map<std::string, ugreen_leds_t::led_type_t> led_name_map = {
@@ -29,11 +31,23 @@ static std::map<std::string, ugreen_leds_t::led_type_t> led_name_map = {
 
 using led_type_pair = std::pair<std::string, ugreen_leds_t::led_type_t>;
 
+ugreen_leds_t::led_data_t get_status_robust(ugreen_leds_t &leds_controller, ugreen_leds_t::led_type_t led) {
+    usleep(USLEEP_READ_STATUS_INTERVAL);
+    auto data = leds_controller.get_status(led);
+
+    for (int retry_cnt = 1; !data.is_available && retry_cnt < MAX_RETRY_COUNT; ++retry_cnt) {
+        usleep(USLEEP_READ_STATUS_RETRY_INTERVAL);
+        data = leds_controller.get_status(led);
+    }
+
+    return data;
+}
+
 void show_leds_info(ugreen_leds_t &leds_controller, const std::vector<led_type_pair>& leds) {
 
-    for (auto led : leds ) {
-        usleep(USLEEP_READ_STATUS_INTERVAL);
-        auto data = leds_controller.get_status(led.second);
+    for (auto led : leds) {
+
+        auto data = get_status_robust(leds_controller, led.second);
 
         if (!data.is_available) {
             std::printf("%s: unavailable or non-existent\n", led.first.c_str());
@@ -142,6 +156,7 @@ int main(int argc, char *argv[])
     while (!args.empty() && args.front().front() != '-') {
         if (args.front() == "all") {
             for (const auto &v : led_name_map) {
+                if (get_status_robust(leds_controller, v.second).is_available)
                     leds.push_back(v);
             }
         } else {
@@ -245,7 +260,7 @@ int main(int argc, char *argv[])
             const auto &fn = fn_pair.second;
             int last_status = -1;
 
-            for (int retry_cnt = 0; retry_cnt < 3 && last_status != 0; ++retry_cnt) {
+            for (int retry_cnt = 0; retry_cnt < MAX_RETRY_COUNT && last_status != 0; ++retry_cnt) {
 
                 if (retry_cnt == 0) {
                     if (is_modification) 
