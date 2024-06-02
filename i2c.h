@@ -1,5 +1,5 @@
-#ifndef __DX4600_I2C_H__
-#define __DX4600_I2C_H__
+#ifndef __UGREEN_I2C_H__
+#define __UGREEN_I2C_H__
 
 #include <stdint.h>
 #include <vector>

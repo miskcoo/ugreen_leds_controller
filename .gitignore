@@ -1,4 +1,6 @@
 kmod
 *.o
 dx4600_leds_cli
+ugreen_leds_cli
 run.sh
+zpool_leds.sh

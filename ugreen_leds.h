@@ -1,22 +1,26 @@
-#ifndef __DX4600_LEDS_H__
-#define __DX4600_LEDS_H__
+#ifndef __UGREEN_LEDS_H__
+#define __UGREEN_LEDS_H__
 
 #include <array>
 #include <optional>
 
 #include "i2c.h"
 
-#define DX4600_LED_POWER    dx4600_leds_t::led_type_t::power
-#define DX4600_LED_NETDEV   dx4600_leds_t::led_type_t::netdev
-#define DX4600_LED_DISK1    dx4600_leds_t::led_type_t::disk1
-#define DX4600_LED_DISK2    dx4600_leds_t::led_type_t::disk2
-#define DX4600_LED_DISK3    dx4600_leds_t::led_type_t::disk3
-#define DX4600_LED_DISK4    dx4600_leds_t::led_type_t::disk4
+#define UGREEN_LED_POWER    ugreen_leds_t::led_type_t::power
+#define UGREEN_LED_NETDEV   ugreen_leds_t::led_type_t::netdev
+#define UGREEN_LED_DISK1    ugreen_leds_t::led_type_t::disk1
+#define UGREEN_LED_DISK2    ugreen_leds_t::led_type_t::disk2
+#define UGREEN_LED_DISK3    ugreen_leds_t::led_type_t::disk3
+#define UGREEN_LED_DISK4    ugreen_leds_t::led_type_t::disk4
+#define UGREEN_LED_DISK5    ugreen_leds_t::led_type_t::disk5
+#define UGREEN_LED_DISK6    ugreen_leds_t::led_type_t::disk6
+#define UGREEN_LED_DISK7    ugreen_leds_t::led_type_t::disk7
+#define UGREEN_LED_DISK8    ugreen_leds_t::led_type_t::disk8
 
-// #define DX4600_LED_I2C_DEV   "/dev/i2c-1"
-#define DX4600_LED_I2C_ADDR  0x3a
+// #define UGREEN_LED_I2C_DEV   "/dev/i2c-1"
+#define UGREEN_LED_I2C_ADDR  0x3a
 
-class dx4600_leds_t {
+class ugreen_leds_t {
 
     i2c_device_t _i2c;
 
@@ -27,10 +31,11 @@ public:
     };
 
     enum class led_type_t : uint8_t {
-        power = 0, netdev, disk1, disk2, disk3, disk4
+        power = 0, netdev, disk1, disk2, disk3, disk4, disk5, disk6, disk7, disk8
     };
 
     struct led_data_t {
+        bool is_available;
         op_mode_t op_mode;
         uint8_t brightness;
         uint8_t color_r, color_g, color_b;

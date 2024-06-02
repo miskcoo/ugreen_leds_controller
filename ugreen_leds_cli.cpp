@@ -7,37 +7,53 @@
 #include <map>
 #include <functional>
 
-#include "dx4600_leds.h"
+#include "ugreen_leds.h"
 
 #define USLEEP_INTERVAL 1500
 
-static std::map<std::string, dx4600_leds_t::led_type_t> led_name_map = {
-    { "power",  DX4600_LED_POWER },
-    { "netdev", DX4600_LED_NETDEV },
-    { "disk1",  DX4600_LED_DISK1 },
-    { "disk2",  DX4600_LED_DISK2 },
-    { "disk3",  DX4600_LED_DISK3 },
-    { "disk4",  DX4600_LED_DISK4 },
+static std::map<std::string, ugreen_leds_t::led_type_t> led_name_map = {
+    { "power",  UGREEN_LED_POWER },
+    { "netdev", UGREEN_LED_NETDEV },
+    { "disk1",  UGREEN_LED_DISK1 },
+    { "disk2",  UGREEN_LED_DISK2 },
+    { "disk3",  UGREEN_LED_DISK3 },
+    { "disk4",  UGREEN_LED_DISK4 },
+    { "disk5",  UGREEN_LED_DISK5 },
+    { "disk6",  UGREEN_LED_DISK6 },
+    { "disk7",  UGREEN_LED_DISK7 },
+    { "disk8",  UGREEN_LED_DISK8 },
 };
 
-using led_type_pair = std::pair<std::string, dx4600_leds_t::led_type_t>;
+using led_type_pair = std::pair<std::string, ugreen_leds_t::led_type_t>;
+std::map<ugreen_leds_t::led_type_t, bool> led_availability;
 
-void show_leds_info(dx4600_leds_t &leds_controller, const std::vector<led_type_pair>& leds) {
+bool is_led_available(ugreen_leds_t &leds_controller, ugreen_leds_t::led_type_t led) {
+    auto it = led_availability.find(led);
+    if (it != led_availability.end())
+        return it->second;
+    usleep(USLEEP_INTERVAL);
+    return led_availability[led] = leds_controller.get_status(led).is_available;
+}
+
+void show_leds_info(ugreen_leds_t &leds_controller, const std::vector<led_type_pair>& leds) {
 
     for (auto led : leds ) {
         usleep(USLEEP_INTERVAL);
         auto data = leds_controller.get_status(led.second);
 
+        led_availability[led.second] = data.is_available;
+        if (!data.is_available) break;
+
         std::string op_mode_txt = "unknown";
 
         switch(data.op_mode) {
-            case dx4600_leds_t::op_mode_t::off:
+            case ugreen_leds_t::op_mode_t::off:
                 op_mode_txt = "off"; break;
-            case dx4600_leds_t::op_mode_t::on:
+            case ugreen_leds_t::op_mode_t::on:
                 op_mode_txt = "on"; break;
-            case dx4600_leds_t::op_mode_t::blink:
+            case ugreen_leds_t::op_mode_t::blink:
                 op_mode_txt = "blink"; break;
-            case dx4600_leds_t::op_mode_t::breath:
+            case ugreen_leds_t::op_mode_t::breath:
                 op_mode_txt = "breath"; break;
         };
 
@@ -45,7 +61,7 @@ void show_leds_info(dx4600_leds_t &leds_controller, const std::vector<led_type_p
                 led.first.c_str(), op_mode_txt.c_str(), (int)data.brightness, 
                 (int)data.color_r, (int)data.color_g, (int)data.color_b);
 
-        if (data.op_mode == dx4600_leds_t::op_mode_t::blink) {
+        if (data.op_mode == ugreen_leds_t::op_mode_t::blink) {
             std::printf(", blink_on = %d ms, blink_off = %d ms",
                     (int)data.t_on, (int)data.t_off);
         }
@@ -56,10 +72,10 @@ void show_leds_info(dx4600_leds_t &leds_controller, const std::vector<led_type_p
 
 void show_help() {
     std::cerr 
-        << "Usage: dx4600_leds_cli  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]\n"
+        << "Usage: ugreen_leds_cli  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]\n"
            "                    [-color R G B] [-brightness BRIGHTNESS] [-status]\n\n"
            "       LED_NAME:    separated by white space, possible values are\n"
-           "                    { power, netdev, disk1, disk2, disk3, disk4, all }.\n"
+           "                    { power, netdev, disk[1-8], all }.\n"
            "       -on / -off:  turn on / off corresponding LEDs.\n"
            "       -blink / -breath:  set LED to the blink / breath mode. This \n"
            "                    mode keeps the LED on for T_ON millseconds and then\n"
@@ -70,6 +86,7 @@ void show_help() {
            "       -brightness: set the brightness of corresponding LEDs.\n"
            "                    BRIGHTNESS should belong to [0, 255].\n"
            "       -status:     display the status of corresponding LEDs.\n"
+           "       -probe:      display the available LEDs.\n"
         << std::endl;
 }
 
@@ -78,7 +95,7 @@ void show_help_and_exit() {
     std::exit(-1);
 }
 
-dx4600_leds_t::led_type_t get_led_type(const std::string& name) {
+ugreen_leds_t::led_type_t get_led_type(const std::string& name) {
     if (led_name_map.find(name) == led_name_map.end()) {
         std::cerr << "Err: unknown LED name " << name << std::endl;
         show_help_and_exit();
@@ -112,7 +129,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    dx4600_leds_t leds_controller;
+    ugreen_leds_t leds_controller;
     if (leds_controller.start() != 0) {
         std::cerr << "Err: fail to open the I2C device." << std::endl;
         return -1;
@@ -127,10 +144,17 @@ int main(int argc, char *argv[])
 
     while (!args.empty() && args.front().front() != '-') {
         if (args.front() == "all") {
-            for (const auto &v : led_name_map)
-                leds.push_back(v);
+            for (const auto &v : led_name_map) {
+                if (is_led_available(leds_controller, v.second))
+                    leds.push_back(v);
+            }
         } else {
-            leds.emplace_back(args.front(), get_led_type(args.front()));
+            auto led_type = get_led_type(args.front());
+            leds.emplace_back(args.front(), led_type);
+            if (!is_led_available(leds_controller, led_type)) {
+                std::cerr << args.front() << " is not available." << std::endl;
+                return -1;
+            }
         }
 
         args.pop_front();
