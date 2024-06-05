@@ -15,7 +15,7 @@ This repository describes the control logic of UGOS for these LED lights and pro
 **I am not sure whether this is compatible with other devices. If you have tested it in other devices, please feel free to update the about list.**
 
 **TODO:**
-- [ ] This is only a commandline tool. It would be nice to write a driver to register the LEDs in `/sys/class/leds`.
+- [ ] a driver to register the LEDs in `/sys/class/leds`. (WIP: see the `kmod` branch)
 
 Below is an example:
 
