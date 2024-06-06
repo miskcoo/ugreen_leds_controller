@@ -3,7 +3,7 @@ LED Controller of UGREEN's DX4600 Pro NAS
 
 UGREEN's DX4600 Pro is a four-bay NAS with a built-in system based on OpenWRT called `UGOS`. It can install Debian or other open-source NAS systems, but the issue is that the installed non-UGOS system does not have drivers for the six LED lights on the front panel (indicating power, network card, and four hard drives). By default, only the power indicator light blinks, and other indicator lights are off.
 
-This repository describes the control logic of UGOS for these LED lights and provides a command-line tool to control them. For the process of understanding this control logic, please refer to [my blog (in Chinese)](https://blog.miskcoo.com/2024/05/ugreen-dx4600-pro-led-controller).
+This repository describes the control logic of UGOS for these LED lights and provides a command-line tool and a kernel module to control them. For the process of understanding this control logic, please refer to [my blog (in Chinese)](https://blog.miskcoo.com/2024/05/ugreen-dx4600-pro-led-controller).
 
 **WARNING:** Only tested on the following devices. I guess that it works for all DX4600 series. For other devices, please follow the [Preparation](#Preparation) section to check if the protocol is compatible, and run `./ugreen_leds_cli all` to see which LEDs are supported by this tool.
 
@@ -12,10 +12,7 @@ This repository describes the control logic of UGOS for these LED lights and pro
 - [x] UGREEN DX4600 Pro
 - [x] UGREEN DXP8800 Plus (see [this repo](https://github.com/meyergru/ugreen_dxp8800_leds_controller) and [#1](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/1))
 
-**I am not sure whether this is compatible with other devices. If you have tested it in other devices, please feel free to update the about list.**
-
-**TODO:**
-- [ ] a driver to register the LEDs in `/sys/class/leds`. (WIP: see the `kmod` branch)
+**I am not sure whether this is compatible with other devices. If you have tested it in other devices, please feel free to update the list above.**
 
 Below is an example:
 
@@ -23,18 +20,18 @@ Below is an example:
 
 It can be achieved by the following commands:
 ```bash
-sudo ./ugreen_leds_cli all -off -status
-sudo ./ugreen_leds_cli power  -color 255 0 255 -blink 400 600 -status
+ugreen_leds_cli all -off -status
+ugreen_leds_cli power  -color 255 0 255 -blink 400 600 
 sleep 0.1
-sudo ./ugreen_leds_cli netdev -color 255 0 0   -blink 400 600 -status
+ugreen_leds_cli netdev -color 255 0 0   -blink 400 600
 sleep 0.1
-sudo ./ugreen_leds_cli disk1  -color 255 255 0 -blink 400 600 -status
+ugreen_leds_cli disk1  -color 255 255 0 -blink 400 600
 sleep 0.1
-sudo ./ugreen_leds_cli disk2  -color 0 255 0   -blink 400 600 -status
+ugreen_leds_cli disk2  -color 0 255 0   -blink 400 600
 sleep 0.1
-sudo ./ugreen_leds_cli disk3  -color 0 255 255 -blink 400 600 -status
+ugreen_leds_cli disk3  -color 0 255 255 -blink 400 600
 sleep 0.1
-sudo ./ugreen_leds_cli disk4  -color 0 0 255   -blink 400 600 -status
+ugreen_leds_cli disk4  -color 0 0 255   -blink 400 600
 ```
 
 ## Preparation
@@ -66,11 +63,13 @@ $ i2cdetect -y 1
 70: -- -- -- -- -- -- -- --
 ```
 
-## Build
+## Build & Usage
 
-After cloning the current repository, use `make` to build this project. Once the build is complete, we can use `ugreen_leds_cli` to modify the LED states (requires root permissions).
+**Note**: The kernel module and the command-line tool cannot be simultaneously used. To use the command-line tool, you must unload the `led_ugreen` module.
 
-## Usage
+### The Command-line Tool
+
+Use `cd cli && make` to build the command-line tool, and `ugreen_leds_cli` to modify the LED states (requires root permissions).
 
 ```
 Usage: ugreen_leds_cli  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]
@@ -90,21 +89,62 @@ Usage: ugreen_leds_cli  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]
        -status:     display the status of corresponding LEDs.
 ```
 
-### Examples
+Below is an example:
 
 ```bash
 # turn on all LEDs
-sudo ./ugreen_leds_cli all -on
+ugreen_leds_cli all -on
 
 # query LEDs' status
-sudo ./ugreen_leds_cli all -status
+ugreen_leds_cli all -status
 
 # turn on the power indicator,
 # and then set its color to blue,
 # and then set its brightness to 128 / 256,
 # and finally display its status
-sudo ./ugreen_leds_cli power -on -color 0 0 255 -brightness 128 -status
+ugreen_leds_cli power -on -color 0 0 255 -brightness 128 -status
 ```
+
+### The Kernel Module
+
+There are three methods to install the module:
+
+- Run `cd kmod && make` to build the kernel module, and then load it with `sudo insmod led-ugreen.ko`.
+
+- Alternatively, you can install it with dkms:
+
+  ```bash
+  cp -r kmod /usr/src/led-ugreen-0.1
+  dkms add -m led-ugreen -v 0.1
+  dkms build -m led-ugreen -v 0.1 && dkms install -m led-ugreen -v 0.1
+  ```
+
+- You can also install the package [here](https://github.com/miskcoo/ugreen_dx4600_leds_controller/releases).
+
+After loading the `led-ugreen` module, you need to run `kmod/ugreen-probe-leds`, and you can see LEDs in `/sys/class/leds`.
+
+Below is an example of setting color, brightness, and blink of the `power` LED:
+
+```bash
+echo 255 > /sys/class/leds/power/brightness    # non-zero brightness turns it on
+echo "255 0 0" > /sys/class/leds/power/color   # set the color to RGB(255, 0, 0)
+echo "blink 100 100" > /sys/class/leds/power/blink_type  # blink at 10Hz
+```
+
+To blink the `netdev` LED when an NIC is active, you can use the `ledtrig-netdev` module (see `kmod/netdevmon.sh`):
+
+```bash
+led="netdev"
+modprobe ledtrig-netdev
+echo netdev > /sys/class/leds/$led/trigger
+echo enp2s0 > /sys/class/leds/$led/device_name
+echo 1 > /sys/class/leds/$led/link
+echo 1 > /sys/class/leds/$led/tx
+echo 1 > /sys/class/leds/$led/rx
+echo 100 > /sys/class/leds/$led/interval
+```
+
+To blink the `disk` LED when a block device is active, you can use the `ledtrig-oneshot` module and monitor the changes of`/sys/block/sda/stat` (see `kmod/diskmon.sh` for an example). 
 
 ## Communication Protocols
 
