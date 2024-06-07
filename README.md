@@ -65,7 +65,7 @@ $ i2cdetect -y 1
 
 ## Build & Usage
 
-**Note**: The kernel module and the command-line tool cannot be simultaneously used. To use the command-line tool, you must unload the `led_ugreen` module.
+**Note**: The kernel module and the command-line tool are conflict. To use the command-line tool, you must unload the `led_ugreen` module.
 
 ### The Command-line Tool
 
@@ -131,7 +131,7 @@ echo "255 0 0" > /sys/class/leds/power/color   # set the color to RGB(255, 0, 0)
 echo "blink 100 100" > /sys/class/leds/power/blink_type  # blink at 10Hz
 ```
 
-To blink the `netdev` LED when an NIC is active, you can use the `ledtrig-netdev` module (see `scripts/ugreen-netdevmon.sh`):
+To blink the `netdev` LED when an NIC is active, you can use the `ledtrig-netdev` module (see `scripts/ugreen-netdevmon`):
 
 ```bash
 led="netdev"
@@ -144,9 +144,9 @@ echo 1 > /sys/class/leds/$led/rx
 echo 100 > /sys/class/leds/$led/interval
 ```
 
-To blink the `disk` LED when a block device is active, you can use the `ledtrig-oneshot` module and monitor the changes of`/sys/block/sda/stat` (see `scripts/ugreen-diskmon.sh` for an example).
+To blink the `disk` LED when a block device is active, you can use the `ledtrig-oneshot` module and monitor the changes of`/sys/block/sda/stat` (see `scripts/ugreen-diskiomon` for an example).
 
-#### Start at Boot
+#### Start at Boot (for Debian 12)
 
 - Edit `/etc/modules-load.d/ugreen-led.conf` and add the following lines:
 ```
@@ -154,6 +154,12 @@ i2c-dev
 led-ugreen
 ledtrig-oneshot
 ledtrig-netdev
+```
+
+- Install the [package](https://github.com/miskcoo/ugreen_dx4600_leds_controller/releases), and run
+```
+systemctl daemon-reload
+systemctl enable --now ugreen-ledmon
 ```
 
 ## Communication Protocols

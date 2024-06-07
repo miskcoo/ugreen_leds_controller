@@ -8,7 +8,7 @@ diskio_data_w=()
 
 { lsmod | grep ledtrig_oneshot ; } || modprobe -v ledtrig_oneshot
 
-sleep 3
+sleep 2
 
 for led in ${led_map[@]}; do 
     if [[ -d /sys/class/leds/$led ]]; then
