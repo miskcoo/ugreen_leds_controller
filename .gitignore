@@ -9,6 +9,7 @@ zpool_leds.sh
 *.o
 *.cmd
 *.mod
+*.d
 modules.order
 compile_commands.json
 

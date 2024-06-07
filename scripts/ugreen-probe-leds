@@ -2,9 +2,8 @@
 
 set -e
 
-if ! lsmod | grep i2c-dev; then
-    modprobe -v i2c-dev
-fi
+{ lsmod | grep i2c-dev ; } || modprobe -v i2c-dev
+{ lsmod | grep led-ugreen ; } || modprobe -v led-ugreen 
 
 i2c_dev=$(i2cdetect -l | grep "SMBus I801 adapter" | grep -Po "i2c-\d+")
 

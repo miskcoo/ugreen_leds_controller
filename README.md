@@ -146,6 +146,16 @@ echo 100 > /sys/class/leds/$led/interval
 
 To blink the `disk` LED when a block device is active, you can use the `ledtrig-oneshot` module and monitor the changes of`/sys/block/sda/stat` (see `kmod/diskmon.sh` for an example). 
 
+#### Start at Boot
+
+- Edit `/etc/modules-load.d/ugreen-led.conf` and add the following lines:
+```
+i2c-dev
+led-ugreen
+ledtrig-oneshot
+ledtrig-netdev
+```
+
 ## Communication Protocols
 
 The IDs for the six LED lights on the front panel of the chassis are as follows: 

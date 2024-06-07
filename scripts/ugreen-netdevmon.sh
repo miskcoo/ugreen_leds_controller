@@ -1,8 +1,8 @@
 #!/usr/bin/bash
 
-if ! lsmod | grep ledtrig_netdev; then
-    modprobe -v ledtrig_netdev
-fi
+{ lsmod | grep ledtrig_netdev ; } || modprobe -v ledtrig_netdev
+
+sleep 3
 
 led="netdev"
 echo netdev > /sys/class/leds/$led/trigger

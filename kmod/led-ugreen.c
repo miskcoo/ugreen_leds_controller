@@ -516,6 +516,12 @@ static int ugreen_led_probe(struct i2c_client *client) {
         state->cdev.groups = ugreen_led_groups;
         state->cdev.blink_set = ugreen_led_set_blink;
 
+        if (i == 1) {
+            state->cdev.default_trigger = "netdev";
+        } else if (i >= 2) {
+            state->cdev.default_trigger = "oneshot";
+        }
+
         led_classdev_register(&client->dev, &state->cdev);
     }
 

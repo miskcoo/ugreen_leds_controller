@@ -1,0 +1,11 @@
+[Unit]
+Description=UGREEN LEDs daemon for monitoring diskio and blinking corresponding LEDs
+
+[Service]
+ExecStartPre=/usr/bin/ugreen-probe-leds
+ExecStart=/root/ugreen-diskmon.sh
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target
+
