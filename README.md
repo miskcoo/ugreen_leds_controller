@@ -121,7 +121,7 @@ There are three methods to install the module:
 
 - You can also install the package [here](https://github.com/miskcoo/ugreen_dx4600_leds_controller/releases).
 
-After loading the `led-ugreen` module, you need to run `kmod/ugreen-probe-leds`, and you can see LEDs in `/sys/class/leds`.
+After loading the `led-ugreen` module, you need to run `scripts/ugreen-probe-leds`, and you can see LEDs in `/sys/class/leds`.
 
 Below is an example of setting color, brightness, and blink of the `power` LED:
 
@@ -131,7 +131,7 @@ echo "255 0 0" > /sys/class/leds/power/color   # set the color to RGB(255, 0, 0)
 echo "blink 100 100" > /sys/class/leds/power/blink_type  # blink at 10Hz
 ```
 
-To blink the `netdev` LED when an NIC is active, you can use the `ledtrig-netdev` module (see `kmod/netdevmon.sh`):
+To blink the `netdev` LED when an NIC is active, you can use the `ledtrig-netdev` module (see `scripts/ugreen-netdevmon.sh`):
 
 ```bash
 led="netdev"
@@ -144,7 +144,7 @@ echo 1 > /sys/class/leds/$led/rx
 echo 100 > /sys/class/leds/$led/interval
 ```
 
-To blink the `disk` LED when a block device is active, you can use the `ledtrig-oneshot` module and monitor the changes of`/sys/block/sda/stat` (see `kmod/diskmon.sh` for an example). 
+To blink the `disk` LED when a block device is active, you can use the `ledtrig-oneshot` module and monitor the changes of`/sys/block/sda/stat` (see `scripts/ugreen-diskmon.sh` for an example).
 
 #### Start at Boot
 
