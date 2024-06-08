@@ -144,7 +144,7 @@ echo 1 > /sys/class/leds/$led/rx
 echo 100 > /sys/class/leds/$led/interval
 ```
 
-To blink the `disk` LED when a block device is active, you can use the `ledtrig-oneshot` module and monitor the changes of`/sys/block/sda/stat` (see `scripts/ugreen-diskiomon` for an example).
+To blink the `disk` LED when a block device is active, you can use the `ledtrig-oneshot` module and monitor the changes of`/sys/block/sda/stat` (see `scripts/ugreen-diskiomon` for an example). If you are using zfs, you can combine this script with that provided in [#1](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/1) to change the LED's color when a disk drive failure occurs. 
 
 #### Start at Boot (for Debian 12)
 
