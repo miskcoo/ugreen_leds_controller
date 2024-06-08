@@ -1,7 +1,13 @@
 #!/usr/bin/bash
 
-devices=(sda sdb sdc sdd sde sdf sdg sdh)
+possible_devices=(sda sdb sdc sdd sde sdf sdg sdh)
 led_map=(disk1 disk2 disk3 disk4 disk5 disk6 disk7 disk8)
+devices=()
+
+# check disk SMART information
+CHECK_SMART=true
+# roughly 360 seconds by default
+smart_pool_interval=3600
 
 diskio_data_r=()
 diskio_data_w=()
@@ -10,17 +16,29 @@ diskio_data_w=()
 
 sleep 2
 
-for led in ${led_map[@]}; do 
+for i in "${!led_map[@]}"; do
+    led=${led_map[i]} 
     if [[ -d /sys/class/leds/$led ]]; then
         echo oneshot > /sys/class/leds/$led/trigger
         echo 1 > /sys/class/leds/$led/invert
         echo 100 > /sys/class/leds/$led/delay_on
         echo 100 > /sys/class/leds/$led/delay_off
+        echo "255 255 255" > /sys/class/leds/$led/color
+        dev=${possible_devices[i]}
+        if [[ -f /sys/class/block/${dev}/stat ]]; then
+            devices+=(${dev})
+        else
+            # turn off the led if no disk installed on this slot
+            echo 0 > /sys/class/leds/$led/brightness
+            echo none > /sys/class/leds/$led/trigger
+        fi
     fi
 done
 
-while true; do
+echo detected SATA drives: ${devices[@]}
 
+let loop_cnt=0
+while true; do
     for i in "${!devices[@]}"; do
         dev=${devices[$i]}
         diskio_old_r=${diskio_data_r[$i]}
@@ -31,6 +49,17 @@ while true; do
                 echo "255 0 0" > /sys/class/leds/${led_map[$i]}/color
             fi
             continue
+        fi
+
+        # check disk health
+        cnt=$(($cnt+1))
+        cnt=$(($cnt%${smart_pool_interval}))
+        if [ "$CHECK_SMART" = true ] && [[ ${cnt} -eq 0 ]]; then
+            if [[ -z $(smartctl -H ${dev} | grep SUCCESS) ]]; then
+                echo "255 0 0" > /sys/class/leds/${led_map[$i]}/color
+                echo Disk failure detected
+                continue
+            fi
         fi
 
         diskio_new_r=$(cat /sys/block/${dev}/stat | awk '{ print $1 }')
