@@ -4,7 +4,7 @@ possible_devices=(sda sdb sdc sdd sde sdf sdg sdh)
 led_map=(disk1 disk2 disk3 disk4 disk5 disk6 disk7 disk8)
 devices=()
 
-# check disk SMART information
+# check dist SMART information
 CHECK_SMART=true
 # roughly 360 seconds by default
 smart_pool_interval=3600
@@ -47,6 +47,7 @@ while true; do
         if [[ ! -f /sys/class/block/${dev}/stat ]]; then
             if [[ -f /sys/class/leds/${led_map[$i]}/color ]]; then 
                 echo "255 0 0" > /sys/class/leds/${led_map[$i]}/color
+                echo Disk /dev/$dev offline
             fi
             continue
         fi
@@ -55,9 +56,9 @@ while true; do
         cnt=$(($cnt+1))
         cnt=$(($cnt%${smart_pool_interval}))
         if [ "$CHECK_SMART" = true ] && [[ ${cnt} -eq 0 ]]; then
-            if [[ -z $(smartctl -H ${dev} | grep SUCCESS) ]]; then
+            if [[ -z $(smartctl -H /dev/${dev} | grep PASSED) ]]; then
                 echo "255 0 0" > /sys/class/leds/${led_map[$i]}/color
-                echo Disk failure detected
+                echo Disk failure detected on /dev/$dev
                 continue
             fi
         fi
