@@ -27,6 +27,9 @@ while true; do
         diskio_old_w=${diskio_data_w[$i]}
 
         if [[ ! -f /sys/class/block/${dev}/stat ]]; then
+            if [[ -f /sys/class/leds/${led_map[$i]}/color ]]; then 
+                echo "255 0 0" > /sys/class/leds/${led_map[$i]}/color
+            fi
             continue
         fi
 
@@ -40,6 +43,10 @@ while true; do
         diskio_data_r[$i]=$diskio_new_r
         diskio_data_w[$i]=$diskio_new_w
     done
+
+    if [ -f /usr/bin/zpool-leds.sh ]; then
+        bash /usr/bin/zpool-leds.sh
+    fi
 
     sleep 0.1
 
