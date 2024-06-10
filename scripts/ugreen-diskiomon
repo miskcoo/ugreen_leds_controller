@@ -63,8 +63,8 @@ for i in "${!led_map[@]}"; do
     fi
 done
 
-diskio_data_r=()
-diskio_data_w=()
+declare -A diskio_data_r
+declare -A diskio_data_w
 let loop_cnt=0
 while true; do
     for led in "${!devices[@]}"; do
