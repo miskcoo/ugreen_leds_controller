@@ -10,6 +10,7 @@ This repository describes the control logic of UGOS for these LED lights and pro
 - [x] UGREEN DX4600 Pro
 - [x] UGREEN DXP4800 Plus (reported [here](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8))
 - [x] UGREEN DXP8800 Plus (see [this repo](https://github.com/meyergru/ugreen_dxp8800_leds_controller) and [#1](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/1))
+- [ ] UGREEN DXP480T Plus (**NO**, but the protocol has been understood, see [#6](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/6#issuecomment-2156807225))
 
 **I am not sure whether this is compatible with other devices. If you have tested it in other devices, please feel free to update the list above.**
 
