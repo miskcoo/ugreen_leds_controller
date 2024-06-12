@@ -1,8 +1,9 @@
 [Unit]
-Description=UGREEN LEDs daemon for monitoring diskio and blinking corresponding LEDs
+Description=UGREEN LEDs daemon for monitoring diskio / netio (of %i) and blinking corresponding LEDs
 
 [Service]
 ExecStartPre=/usr/bin/ugreen-probe-leds
+ExecStartPre=/usr/bin/ugreen-netdevmon %i
 ExecStart=/usr/bin/ugreen-diskiomon
 StandardOutput=journal
 

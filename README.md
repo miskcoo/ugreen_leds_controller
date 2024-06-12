@@ -9,6 +9,7 @@ This repository describes the control logic of UGOS for these LED lights and pro
 
 - [x] UGREEN DX4600 Pro
 - [x] UGREEN DXP4800 Plus (reported [here](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8))
+- [x] UGREEN DXP6800 Pro (reported in [#7](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/7))
 - [x] UGREEN DXP8800 Plus (see [this repo](https://github.com/meyergru/ugreen_dxp8800_leds_controller) and [#1](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/1))
 - [ ] UGREEN DXP480T Plus (**NO**, but the protocol has been understood, see [#6](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/6#issuecomment-2156807225))
 
@@ -119,7 +120,7 @@ There are three methods to install the module:
   dkms build -m led-ugreen -v 0.1 && dkms install -m led-ugreen -v 0.1
   ```
 
-- You can also install the package [here](https://github.com/miskcoo/ugreen_dx4600_leds_controller/releases).
+- You can also directly install the package [here](https://github.com/miskcoo/ugreen_dx4600_leds_controller/releases).
 
 After loading the `led-ugreen` module, you need to run `scripts/ugreen-probe-leds`, and you can see LEDs in `/sys/class/leds`.
 
@@ -156,10 +157,28 @@ ledtrig-oneshot
 ledtrig-netdev
 ```
 
-- Install the [package](https://github.com/miskcoo/ugreen_dx4600_leds_controller/releases), and run
-```
+- Install the `smartctl` tool: `apt install smartmontools`
+
+- Install the kernel module by one of the three methods mentioned above. For example, directly install [the deb package](https://github.com/miskcoo/ugreen_dx4600_leds_controller/releases).
+
+- Copy files in the `scripts` directory: 
+```bash
+scripts=(ugreen-diskiomon ugreen-netdevmon ugreen-probe-leds)
+for f in ${scripts[@]}; do
+    chmod +x "scripts/$f"
+    cp "scripts/$f" /usr/bin
+done
+
+cp scripts/*.service /etc/systemd/system/
+
 systemctl daemon-reload
-systemctl enable --now ugreen-ledmon
+
+# change enp2s0 to the network device you want to monitor
+systemctl start ugreen-ledmon@enp2s0 
+
+# if you confirm that everything works well, 
+# run the command below to make the service start at boot
+systemctl enable ugreen-ledmon@enp2s0 
 ```
 
 ## Communication Protocols
