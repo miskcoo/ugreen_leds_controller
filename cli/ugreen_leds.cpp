@@ -1,8 +1,9 @@
 #include "ugreen_leds.h"
 #include <string>
+#include <chrono>
+#include <thread>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 
 #define I2C_DEV_PATH  "/sys/class/i2c-dev/"
 
@@ -53,7 +54,7 @@ static void append_checksum(std::vector<uint8_t>& data) {
     data.push_back(sum & 0xff);
 }
 
-ugreen_leds_t::led_data_t ugreen_leds_t::get_status(led_type_t id) {
+ugreen_leds_t::led_data_t ugreen_leds_t::_get_status_once(led_type_t id) {
     led_data_t data { };
     data.is_available = false;
 
@@ -83,7 +84,23 @@ ugreen_leds_t::led_data_t ugreen_leds_t::get_status(led_type_t id) {
     return data;
 }
 
-int ugreen_leds_t::_change_status(led_type_t id, uint8_t command, std::array<std::optional<uint8_t>, 4> params) {
+ugreen_leds_t::led_data_t ugreen_leds_t::get_status(led_type_t id) {
+    using std::this_thread::sleep_for;
+    using std::chrono::microseconds;
+
+    sleep_for(microseconds(USLEEP_READ_STATUS_INTERVAL));
+
+    auto data = _get_status_once(id);
+
+    for (int retry_cnt = 1; !data.is_available && retry_cnt < MAX_RETRY_COUNT; ++retry_cnt) {
+    sleep_for(microseconds(USLEEP_READ_STATUS_RETRY_INTERVAL));
+        data = _get_status_once(id);
+    }
+
+    return data;
+}
+
+int ugreen_leds_t::_change_status_once(led_type_t id, uint8_t command, std::array<std::optional<uint8_t>, 4> params) {
     std::vector<uint8_t> data {
     //   3c    3b    3a
         0x00, 0xa0, 0x01,
@@ -99,6 +116,36 @@ int ugreen_leds_t::_change_status(led_type_t id, uint8_t command, std::array<std
     append_checksum(data);
     data[0] = (uint8_t)id;
     return _i2c.write_block_data((uint8_t)id, data);
+}
+
+int ugreen_leds_t::_change_status(led_type_t id, uint8_t command, std::array<std::optional<uint8_t>, 4> params) {
+
+    using std::this_thread::sleep_for;
+    using std::chrono::microseconds;
+
+    int last_status = -1;
+
+    for (int retry_cnt = 0; retry_cnt < MAX_RETRY_COUNT && last_status != 0; ++retry_cnt) {
+
+        if (retry_cnt == 0) {
+            sleep_for(microseconds(USLEEP_MODIFICATION_INTERVAL));
+        } else {
+            sleep_for(microseconds(USLEEP_MODIFICATION_RETRY_INTERVAL));
+        }
+
+        last_status = _change_status_once(id, command, params);
+
+        if (last_status == 0) {
+            sleep_for(microseconds(USLEEP_MODIFICATION_QUERY_RESULT_INTERVAL));
+            last_status = !_is_last_modification_successful();
+        }
+    }
+
+    if (last_status != 0) {
+        return -1;
+    }
+
+    return 0;
 }
 
 int ugreen_leds_t::set_onoff(led_type_t id, uint8_t status) {
@@ -125,7 +172,7 @@ int ugreen_leds_t::set_brightness(led_type_t id, uint8_t brightness) {
     return _change_status(id, 0x01, { brightness } );
 }
 
-bool ugreen_leds_t::is_last_modification_successful() {
+bool ugreen_leds_t::_is_last_modification_successful() {
     return _i2c.read_byte_data(0x80) == 1;
 }
 
