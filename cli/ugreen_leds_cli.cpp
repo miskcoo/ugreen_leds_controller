@@ -24,11 +24,11 @@ static std::map<std::string, ugreen_leds_t::led_type_t> led_name_map = {
 
 using led_type_pair = std::pair<std::string, ugreen_leds_t::led_type_t>;
 
-void show_leds_info(ugreen_leds_t &leds_controller, const std::vector<led_type_pair>& leds) {
+void show_leds_info(std::shared_ptr<ugreen_leds_t> leds_controller, const std::vector<led_type_pair>& leds) {
 
     for (auto led : leds) {
 
-        auto data = leds_controller.get_status(led.second);
+        auto data = leds_controller->get_status(led.second);
 
         if (!data.is_available) {
             std::printf("%s: unavailable or non-existent\n", led.first.c_str());
@@ -119,12 +119,16 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    ugreen_leds_t leds_controller;
-    if (leds_controller.start() != 0) {
-        std::cerr << "Err: fail to open the I2C device." << std::endl;
-        std::cerr << "Please check that (1) you have the root permission; " << std::endl;
-        std::cerr << "              and (2) the i2c-dev module is loaded. " << std::endl;
-        return -1;
+    auto leds_controller = ugreen_leds_t::create_i2c_controller();
+    if (leds_controller->start() != 0) {
+        leds_controller = ugreen_leds_t::create_kmod_controller();
+
+        if (leds_controller->start() != 0) {
+            std::cerr << "Err: fail to open the I2C device." << std::endl;
+            std::cerr << "Please check that (1) you have the root permission; " << std::endl;
+            std::cerr << "              and (2) the i2c-dev module is loaded. " << std::endl;
+            return -1;
+        }
     }
 
     std::deque<std::string> args;
@@ -137,7 +141,7 @@ int main(int argc, char *argv[])
     while (!args.empty() && args.front().front() != '-') {
         if (args.front() == "all") {
             for (const auto &v : led_name_map) {
-                if (leds_controller.get_status(v.second).is_available)
+                if (leds_controller->get_status(v.second).is_available)
                     leds.push_back(v);
             }
         } else {
@@ -163,7 +167,7 @@ int main(int argc, char *argv[])
             // turn on / off LEDs
             uint8_t status = args.front() == "-on";
             ops_seq.emplace_back(true, [=, &leds_controller](led_type_pair led) {
-                return leds_controller.set_onoff(led.second, status);
+                return leds_controller->set_onoff(led.second, status);
             } );
 
             args.pop_front();
@@ -184,9 +188,9 @@ int main(int argc, char *argv[])
             bool is_blink = (args.front() == "-blink");
             ops_seq.emplace_back(true, [=, &leds_controller](led_type_pair led) {
                 if (is_blink) {
-                    return leds_controller.set_blink(led.second, t_on, t_off);
+                    return leds_controller->set_blink(led.second, t_on, t_off);
                 } else {
-                    return leds_controller.set_breath(led.second, t_on, t_off);
+                    return leds_controller->set_breath(led.second, t_on, t_off);
                 }
             } );
         } else if(args.front() == "-color") {
@@ -205,7 +209,7 @@ int main(int argc, char *argv[])
             uint8_t B = parse_integer(args.front(), 0x00, 0xff);
             args.pop_front();
             ops_seq.emplace_back(true, [=, &leds_controller](led_type_pair led) {
-                return leds_controller.set_rgb(led.second, R, G, B);
+                return leds_controller->set_rgb(led.second, R, G, B);
             } );
         } else if(args.front() == "-brightness") {
             // set brightness
@@ -219,7 +223,7 @@ int main(int argc, char *argv[])
             uint8_t brightness = parse_integer(args.front(), 0x00, 0xff);
             args.pop_front();
             ops_seq.emplace_back(true, [=, &leds_controller](led_type_pair led) {
-                return leds_controller.set_brightness(led.second, brightness);
+                return leds_controller->set_brightness(led.second, brightness);
             } );
         } else if(args.front() == "-status") {
             // display the status

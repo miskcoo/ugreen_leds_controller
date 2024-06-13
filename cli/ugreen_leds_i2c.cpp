@@ -1,4 +1,4 @@
-#include "ugreen_leds.h"
+#include "ugreen_leds_i2c.h"
 #include <string>
 #include <chrono>
 #include <thread>
@@ -7,7 +7,7 @@
 
 #define I2C_DEV_PATH  "/sys/class/i2c-dev/"
 
-int ugreen_leds_t::start() {
+int ugreen_leds_i2c::start() {
     namespace fs = std::filesystem;
 
     if (!fs::exists(I2C_DEV_PATH))
@@ -54,7 +54,7 @@ static void append_checksum(std::vector<uint8_t>& data) {
     data.push_back(sum & 0xff);
 }
 
-ugreen_leds_t::led_data_t ugreen_leds_t::_get_status_once(led_type_t id) {
+ugreen_leds_i2c::led_data_t ugreen_leds_i2c::_get_status_once(led_type_t id) {
     led_data_t data { };
     data.is_available = false;
 
@@ -84,7 +84,7 @@ ugreen_leds_t::led_data_t ugreen_leds_t::_get_status_once(led_type_t id) {
     return data;
 }
 
-ugreen_leds_t::led_data_t ugreen_leds_t::get_status(led_type_t id) {
+ugreen_leds_i2c::led_data_t ugreen_leds_i2c::get_status(led_type_t id) {
     using std::this_thread::sleep_for;
     using std::chrono::microseconds;
 
@@ -100,7 +100,7 @@ ugreen_leds_t::led_data_t ugreen_leds_t::get_status(led_type_t id) {
     return data;
 }
 
-int ugreen_leds_t::_change_status_once(led_type_t id, uint8_t command, std::array<std::optional<uint8_t>, 4> params) {
+int ugreen_leds_i2c::_change_status_once(led_type_t id, uint8_t command, std::array<std::optional<uint8_t>, 4> params) {
     std::vector<uint8_t> data {
     //   3c    3b    3a
         0x00, 0xa0, 0x01,
@@ -118,7 +118,7 @@ int ugreen_leds_t::_change_status_once(led_type_t id, uint8_t command, std::arra
     return _i2c.write_block_data((uint8_t)id, data);
 }
 
-int ugreen_leds_t::_change_status(led_type_t id, uint8_t command, std::array<std::optional<uint8_t>, 4> params) {
+int ugreen_leds_i2c::_change_status(led_type_t id, uint8_t command, std::array<std::optional<uint8_t>, 4> params) {
 
     using std::this_thread::sleep_for;
     using std::chrono::microseconds;
@@ -148,12 +148,12 @@ int ugreen_leds_t::_change_status(led_type_t id, uint8_t command, std::array<std
     return 0;
 }
 
-int ugreen_leds_t::set_onoff(led_type_t id, uint8_t status) {
+int ugreen_leds_i2c::set_onoff(led_type_t id, uint8_t status) {
     if (status >= 2) return -1;
     return _change_status(id, 0x03, { status } );
 }
 
-int ugreen_leds_t::_set_blink_or_breath(uint8_t command, led_type_t id, uint16_t t_on, uint16_t t_off) {
+int ugreen_leds_i2c::_set_blink_or_breath(uint8_t command, led_type_t id, uint16_t t_on, uint16_t t_off) {
     uint16_t t_hight = t_on + t_off;
     uint16_t t_low = t_on;
     return _change_status(id, command, { 
@@ -164,22 +164,26 @@ int ugreen_leds_t::_set_blink_or_breath(uint8_t command, led_type_t id, uint16_t
     } );
 }
 
-int ugreen_leds_t::set_rgb(led_type_t id, uint8_t r, uint8_t g, uint8_t b) {
+int ugreen_leds_i2c::set_rgb(led_type_t id, uint8_t r, uint8_t g, uint8_t b) {
     return _change_status(id, 0x02, { r, g, b } );
 }
 
-int ugreen_leds_t::set_brightness(led_type_t id, uint8_t brightness) {
+int ugreen_leds_i2c::set_brightness(led_type_t id, uint8_t brightness) {
     return _change_status(id, 0x01, { brightness } );
 }
 
-bool ugreen_leds_t::_is_last_modification_successful() {
+bool ugreen_leds_i2c::_is_last_modification_successful() {
     return _i2c.read_byte_data(0x80) == 1;
 }
 
-int ugreen_leds_t::set_blink(led_type_t id, uint16_t t_on, uint16_t t_off) {
+int ugreen_leds_i2c::set_blink(led_type_t id, uint16_t t_on, uint16_t t_off) {
     return _set_blink_or_breath(0x04, id, t_on, t_off);
 }
 
-int ugreen_leds_t::set_breath(led_type_t id, uint16_t t_on, uint16_t t_off) {
+int ugreen_leds_i2c::set_breath(led_type_t id, uint16_t t_on, uint16_t t_off) {
     return _set_blink_or_breath(0x05, id, t_on, t_off);
+}
+
+std::shared_ptr<ugreen_leds_t> ugreen_leds_t::create_i2c_controller() {
+    return std::make_shared<ugreen_leds_i2c>();
 }
