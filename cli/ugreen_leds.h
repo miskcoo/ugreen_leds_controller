@@ -53,6 +53,7 @@ public:
 public:
     static std::shared_ptr<ugreen_leds_t> create_i2c_controller();
     static std::shared_ptr<ugreen_leds_t> create_kmod_controller();
+    static std::shared_ptr<ugreen_leds_t> create_socket_controller();
 };
 
 
