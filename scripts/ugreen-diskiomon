@@ -94,7 +94,7 @@ while true; do
         fi
 
         diskio_new_r=$(cat /sys/block/${dev}/stat | awk '{ print $1 }')
-        diskio_new_w=$(cat /sys/block/${dev}/stat | awk '{ print $4 }')
+        diskio_new_w=$(cat /sys/block/${dev}/stat | awk '{ print $5 }')
 
         if [ "${diskio_old_r}" != "${diskio_new_r}" ] || [ "${diskio_old_w}" != "${diskio_new_w}" ]; then
             echo 1 > /sys/class/leds/$led/shot
