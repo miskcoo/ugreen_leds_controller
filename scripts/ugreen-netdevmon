@@ -5,9 +5,12 @@
 sleep 2
 
 led="netdev"
-echo netdev > /sys/class/leds/$led/trigger
-echo $1 > /sys/class/leds/$led/device_name
-echo 1 > /sys/class/leds/$led/link
-echo 1 > /sys/class/leds/$led/tx
-echo 1 > /sys/class/leds/$led/rx
-echo 200 > /sys/class/leds/$led/interval
+
+if [[ -f /sys/class/leds ]]; then
+    echo netdev > /sys/class/leds/$led/trigger
+    echo $1 > /sys/class/leds/$led/device_name
+    echo 1 > /sys/class/leds/$led/link
+    echo 1 > /sys/class/leds/$led/tx
+    echo 1 > /sys/class/leds/$led/rx
+    echo 200 > /sys/class/leds/$led/interval
+fi

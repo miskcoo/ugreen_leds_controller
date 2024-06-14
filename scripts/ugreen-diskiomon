@@ -42,12 +42,8 @@ done <<< "$(lsblk -S -o name,${mapping_method} | tail -n +2)"
 
 for i in "${!led_map[@]}"; do
     led=${led_map[i]} 
-    if [[ -d /sys/class/leds/$led ]]; then
-        echo oneshot > /sys/class/leds/$led/trigger
-        echo 1 > /sys/class/leds/$led/invert
-        echo 100 > /sys/class/leds/$led/delay_on
-        echo 100 > /sys/class/leds/$led/delay_off
-        echo "255 255 255" > /sys/class/leds/$led/color
+    if ugreen_leds_cli $led; then
+        ugreen_leds_cli $led -oneshot 100 100 -color 255 255 255 
 
         # find corresponding device
         _tmp_str=${mapping_method}_map[@]
@@ -57,8 +53,7 @@ for i in "${!led_map[@]}"; do
             devices[$led]=${dev}
         else
             # turn off the led if no disk installed on this slot
-            echo 0 > /sys/class/leds/$led/brightness
-            echo none > /sys/class/leds/$led/trigger
+            ugreen_leds_cli $led -off
         fi
     fi
 done
@@ -77,8 +72,8 @@ while true; do
         fi
 
         if [[ ! -f /sys/class/block/${dev}/stat ]]; then
-            if [[ -f /sys/class/leds/$led/color ]]; then 
-                echo "255 0 0" > /sys/class/leds/$led/color
+            if ugreen_leds_cli $led; then 
+                ugreen_leds_cli $led -color 255 0 0
                 echo Disk /dev/$dev went offline at $(date +%Y-%m-%d' '%H:%M:%S)
                 continue
             fi
@@ -87,7 +82,7 @@ while true; do
         # check disk health
         if [ "$CHECK_SMART" = true ] && [[ ${loop_cnt} -eq 0 ]]; then
             if [[ -z $(smartctl -H /dev/${dev} | grep PASSED) ]]; then
-                echo "255 0 0" > /sys/class/leds/$led/color
+                ugreen_leds_cli $led -color 255 0 0
                 echo Disk failure detected on /dev/$dev at $(date +%Y-%m-%d' '%H:%M:%S)
                 continue
             fi
@@ -97,7 +92,7 @@ while true; do
         diskio_new_w=$(cat /sys/block/${dev}/stat | awk '{ print $4 }')
 
         if [ "${diskio_old_r}" != "${diskio_new_r}" ] || [ "${diskio_old_w}" != "${diskio_new_w}" ]; then
-            echo 1 > /sys/class/leds/$led/shot
+            ugreen_leds_cli $led -shot
         fi
 
         diskio_data_r[$led]=$diskio_new_r
