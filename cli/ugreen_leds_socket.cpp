@@ -5,8 +5,6 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#define LEDS_SOCKET_PATH  "/tmp/leds-ugreen.socket"
-
 int ugreen_leds_socket::start() {
 
     // open the socket file
@@ -15,8 +13,9 @@ int ugreen_leds_socket::start() {
     // connect to the socket
     struct sockaddr_un addr;
     addr.sun_family = AF_UNIX;
-    strcpy(addr.sun_path, LEDS_SOCKET_PATH);
+    strcpy(addr.sun_path, UGREEN_LED_SOCKET_PATH);
     if (connect(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        std::cerr << "failed to connect to the socket" << std::endl;
         close(sockfd);
         sockfd = -1;
         return -1;
@@ -28,7 +27,8 @@ int ugreen_leds_socket::start() {
 ugreen_leds_socket::~ugreen_leds_socket() {
     if (sockfd >= 0) {
         // write data to the socket
-        std::string msg = "exit\n";
+        std::string msg = "0 exit\n";
+        // std::cout << "send: " << msg << std::endl;
         send(sockfd, msg.c_str(), msg.size(), 0);
         close(sockfd);
     }
@@ -41,10 +41,10 @@ ugreen_leds_t::led_data_t ugreen_leds_socket::get_status(led_type_t id) {
     char buf[256];
     recv(sockfd, buf, 256, 0);
     std::stringstream ss(buf);
-    int op_mode, brightness, color_r, color_g, color_b, t_on, t_off;
-    ss >> op_mode >> brightness >> color_r >> color_g >> color_b >> t_on >> t_off;
+    int is_available, op_mode, brightness, color_r, color_g, color_b, t_on, t_off;
+    ss >> is_available >> op_mode >> brightness >> color_r >> color_g >> color_b >> t_on >> t_off;
     led_data_t led_data;
-    led_data.is_available = true;
+    led_data.is_available = is_available;
     led_data.op_mode = (op_mode_t)op_mode;
     led_data.brightness = brightness;
     led_data.color_r = color_r;

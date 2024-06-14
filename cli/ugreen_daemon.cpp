@@ -10,7 +10,6 @@
 #include <chrono>
 #include <ctime>
 
-#define SOCKET_PATH "/tmp/led-ugreen.socket"
 #define UGREEN_MAX_LEDS 10
 
 class ugreen_daemon {
@@ -136,11 +135,11 @@ ugreen_daemon::ugreen_daemon(const char *sock_path) {
     strcpy(addr.sun_path, sock_path);
     unlink(sock_path);
     if (bind(sockfd, (sockaddr*)&addr, sizeof(addr)) < 0) {
-        std::cerr << "Err: fail to bind the socket to " << SOCKET_PATH << std::endl;
+        std::cerr << "Err: fail to bind the socket to " << UGREEN_LED_SOCKET_PATH << std::endl;
         std::exit(-1);
     }
 
-    // listen to the SOCKET_PATH
+    // listen to the UGREEN_LED_SOCKET_PATH
     if (listen(sockfd, 5) < 0) {
         std::cerr << "Err: fail to listen to the socket." << std::endl;
         std::exit(-1);
@@ -162,9 +161,9 @@ ugreen_daemon::ugreen_daemon(const char *sock_path) {
             probed_leds = i;
             break;
         }
-
-        std::cout << "probed " << i << std::endl;
     }
+
+    std::cout << "probed " << probed_leds << " leds." << std::endl;
 
     // initialize the working thread
     exit_flag = false;
@@ -190,6 +189,7 @@ int ugreen_daemon::accept_and_process() {
         int sockfd;
         socket_guard(int sockfd) : sockfd(sockfd) {}
         ~socket_guard() {
+            // std::cout << "close the socket." << std::endl;
             close(sockfd);
         }
     };
@@ -197,6 +197,7 @@ int ugreen_daemon::accept_and_process() {
     socket_guard guard(client_sockfd);
 
     char buffer[256];
+    std::stringstream ss;
     while (true) {
         int n = read(client_sockfd, buffer, sizeof(buffer));
         if (n < 0) {
@@ -205,15 +206,18 @@ int ugreen_daemon::accept_and_process() {
         }
         buffer[n] = '\0';
 
-        std::stringstream ss(buffer);
+        ss << buffer;
+
         std::string command;
         int led_id;
         ss >> led_id >> command;
 
-        if (led_id < 0 || led_id >= probed_leds) {
-            std::cerr << "Err: invalid led id." << std::endl;
+        if (led_id < 0 || led_id >= UGREEN_MAX_LEDS) {
+            std::cerr << "Err: invalid led id " << led_id  << "." << std::endl;
             return -1;
         }
+
+        // std::cout << "led_id: " << led_id << ", command: " << command << std::endl;
 
         if (command == "brightness_set") {
             int brightness;
@@ -242,8 +246,10 @@ int ugreen_daemon::accept_and_process() {
                 leds_pending[led_id].color_b = b;
             }
         } else if (command == "on") {
+            std::lock_guard<std::mutex> lock(pending_lock);
             leds_pending[led_id].op_mode = ugreen_leds_t::op_mode_t::on;
         } else if (command == "off") {
+            std::lock_guard<std::mutex> lock(pending_lock);
             leds_pending[led_id].op_mode = ugreen_leds_t::op_mode_t::off;
         } else if (command == "blink") {
             std::string blink_type;
@@ -291,7 +297,8 @@ int ugreen_daemon::accept_and_process() {
             }
 
             std::stringstream ss;
-            ss << (int)led_status.op_mode << " " 
+            ss << (int)(led_id < probed_leds) << " "
+               << (int)led_status.op_mode << " " 
                << (int)led_status.brightness << " "
                << (int)led_status.color_r << " " 
                << (int)led_status.color_g << " " 
@@ -301,10 +308,10 @@ int ugreen_daemon::accept_and_process() {
 
             send(client_sockfd, ss.str().c_str(), ss.str().size(), 0);
         } else if (command == "exit") {
+            // std::cout << "exit the loop." << std::endl;
             break;
         } else {
-            // invalid command
-            std::cerr << "Err: invalid command." << std::endl;
+            std::cerr << "Err: invalid command " << command << "." << std::endl;
             return -1;
         }
     }
@@ -314,7 +321,7 @@ int ugreen_daemon::accept_and_process() {
 
 int main(int argc, char *argv[])
 {
-    ugreen_daemon daemon(SOCKET_PATH);
+    ugreen_daemon daemon(UGREEN_LED_SOCKET_PATH);
     while(true) daemon.accept_and_process();
     return 0;
 }

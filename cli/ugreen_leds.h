@@ -16,6 +16,8 @@
 #define UGREEN_LED_DISK7    ugreen_leds_t::led_type_t::disk7
 #define UGREEN_LED_DISK8    ugreen_leds_t::led_type_t::disk8
 
+#define UGREEN_LED_SOCKET_PATH "/tmp/led-ugreen.socket"
+
 class ugreen_leds_t {
 
 public:
@@ -57,6 +59,8 @@ public:
         std::cerr << "oneshot mode is not supported" << std::endl;
         return -1;
     }
+
+    virtual const char *get_name() = 0;
 
 public:
     static std::shared_ptr<ugreen_leds_t> create_i2c_controller();

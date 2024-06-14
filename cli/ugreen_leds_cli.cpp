@@ -122,9 +122,9 @@ int main(int argc, char *argv[])
     }
 
     auto controller_creator = {
+        ugreen_leds_t::create_socket_controller,
         ugreen_leds_t::create_i2c_controller,
         ugreen_leds_t::create_kmod_controller,
-        ugreen_leds_t::create_socket_controller
     };
 
     std::shared_ptr<ugreen_leds_t> leds_controller;
@@ -132,8 +132,11 @@ int main(int argc, char *argv[])
     for (auto creator : controller_creator) {
         leds_controller = creator();
 
-        if (leds_controller->start() == 0)
+        if (leds_controller->start() == 0) {
+            // output creator name
+            std::cout << "Using " << leds_controller->get_name() << " controller." << std::endl;
             break;
+        }
     }
 
     if (!leds_controller) {

@@ -20,6 +20,8 @@ public:
     virtual int set_breath(led_type_t id, uint16_t t_on, uint16_t t_off);
     virtual int set_oneshot(led_type_t id, uint16_t t_on, uint16_t t_off);
     virtual int shot(led_type_t id);
+
+    virtual const char* get_name() { return "ugreen_leds_socket"; }
 };
 
 

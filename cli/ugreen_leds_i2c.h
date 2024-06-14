@@ -32,6 +32,8 @@ public:
     virtual int set_blink(led_type_t id, uint16_t t_on, uint16_t t_off);
     virtual int set_breath(led_type_t id, uint16_t t_on, uint16_t t_off);
 
+    virtual const char* get_name() { return "ugreen_leds_i2c"; }
+
 private:
     bool _is_last_modification_successful();
     int _set_blink_or_breath(uint8_t command, led_type_t id, uint16_t t_on, uint16_t t_off);
