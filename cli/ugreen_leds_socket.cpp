@@ -92,6 +92,20 @@ int ugreen_leds_socket::set_breath(led_type_t id, uint16_t t_on, uint16_t t_off)
     return 0;
 }
 
+int ugreen_leds_socket::set_oneshot(led_type_t id, uint16_t t_on, uint16_t t_off) {
+    std::stringstream ss;
+    ss << (int)id << " oneshot_set " << t_on << " " << t_off << "\n";
+    send(sockfd, ss.str().c_str(), ss.str().size(), 0);
+    return 0;
+}
+
+int ugreen_leds_socket::shot(led_type_t id) {
+    std::stringstream ss;
+    ss << (int)id << " shot\n";
+    send(sockfd, ss.str().c_str(), ss.str().size(), 0);
+    return 0;
+}
+
 std::shared_ptr<ugreen_leds_t> ugreen_leds_t::create_socket_controller() {
     return std::make_shared<ugreen_leds_socket>();
 }

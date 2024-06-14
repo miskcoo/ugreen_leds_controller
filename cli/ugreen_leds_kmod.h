@@ -20,6 +20,8 @@ public:
     virtual int set_brightness(led_type_t id, uint8_t brightness);
     virtual int set_blink(led_type_t id, uint16_t t_on, uint16_t t_off);
     virtual int set_breath(led_type_t id, uint16_t t_on, uint16_t t_off);
+    virtual int set_oneshot(led_type_t id, uint16_t t_on, uint16_t t_off);
+    virtual int shot(led_type_t id);
 };
 
 

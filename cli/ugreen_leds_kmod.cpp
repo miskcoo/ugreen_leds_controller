@@ -116,6 +116,26 @@ int ugreen_leds_kmod::set_breath(led_type_t id, uint16_t t_on, uint16_t t_off) {
     return 0;
 }
 
+int ugreen_leds_kmod::set_oneshot(led_type_t id, uint16_t t_on, uint16_t t_off) {
+    auto it = _available_leds.find((int)id);
+    if (it == _available_leds.end()) return -1;
+
+    std::ofstream(it->second / "trigger") << "oneshot\n";
+    std::ofstream(it->second / "invert") << "1\n";
+    std::ofstream(it->second / "delay_on") << t_on << std::endl;
+    std::ofstream(it->second / "delay_off") << t_off << std::endl;
+
+    return 0;
+}
+
+int ugreen_leds_kmod::shot(led_type_t id) {
+    auto it = _available_leds.find((int)id);
+    if (it == _available_leds.end()) return -1;
+
+    std::ofstream(it->second / "shot") << "1\n";
+    return 0;
+}
+
 std::shared_ptr<ugreen_leds_t> ugreen_leds_t::create_kmod_controller() {
     return std::make_shared<ugreen_leds_kmod>();
 }

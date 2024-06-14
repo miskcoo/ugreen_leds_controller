@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <mutex>
 #include <thread>
+#include <chrono>
+#include <ctime>
 
 #define SOCKET_PATH "/tmp/led-ugreen.socket"
 #define UGREEN_MAX_LEDS 10
@@ -17,6 +19,8 @@ class ugreen_daemon {
     int probed_leds;
     ugreen_leds_t::led_data_t leds_pending[UGREEN_MAX_LEDS];
     ugreen_leds_t::led_data_t leds_applied[UGREEN_MAX_LEDS];
+    bool oneshot_enabled[UGREEN_MAX_LEDS];
+    std::time_t oneshot_start_time[UGREEN_MAX_LEDS];
 
     bool exit_flag;
     std::thread working_thread;
@@ -59,7 +63,21 @@ void ugreen_daemon::apply_leds(
     ugreen_leds_t::led_data_t &led_applied,
     ugreen_leds_t::led_data_t &led_pending
 ) {
-    if (led_pending.op_mode != led_applied.op_mode) {
+    auto op_mode = led_pending.op_mode;
+
+    if (oneshot_enabled[(int)led_id]) {
+        std::time_t time_diff = std::time(nullptr) - oneshot_start_time[(int)led_id];
+        int oneshot_cycle = led_pending.t_on + led_pending.t_off;
+        if (time_diff < led_pending.t_on) {
+            op_mode = ugreen_leds_t::op_mode_t::on;
+        } else if (time_diff < oneshot_cycle) {
+            op_mode = ugreen_leds_t::op_mode_t::off;
+        } else {
+            op_mode = ugreen_leds_t::op_mode_t::on;
+        }
+    }
+
+    if (op_mode != led_applied.op_mode) {
         switch (led_pending.op_mode) {
             case ugreen_leds_t::op_mode_t::off:
                 if (leds_controller->set_onoff(led_id, false) == 0)
@@ -83,6 +101,7 @@ void ugreen_daemon::apply_leds(
                     led_applied.t_off = led_pending.t_off;
                 }
                 break;
+            default: break;
         }
     }
 
@@ -244,6 +263,25 @@ int ugreen_daemon::accept_and_process() {
 
             leds_pending[led_id].t_on = std::min(0x7fff, std::max(50, t_on));
             leds_pending[led_id].t_off = std::min(0x7fff, std::max(50, t_off));
+        } else if (command == "oneshot_set") {
+            int t_on, t_off;
+            ss >> t_on >> t_off;
+
+            std::lock_guard<std::mutex> lock(pending_lock);
+
+            leds_pending[led_id].t_on = std::min(0x7fff, std::max(50, t_on));
+            leds_pending[led_id].t_off = std::min(0x7fff, std::max(50, t_off));
+            oneshot_enabled[led_id] = true;
+        } else if (command == "shot") {
+
+            std::time_t time_diff = std::time(nullptr) - oneshot_start_time[led_id];
+
+            std::lock_guard<std::mutex> lock(pending_lock);
+
+            int oneshot_cycle = leds_pending[led_id].t_on + leds_pending[led_id].t_off;
+            if (time_diff > oneshot_cycle || !oneshot_enabled[led_id]) {
+                oneshot_start_time[led_id] = std::time(nullptr);
+            }
         } else if (command == "status") {
             ugreen_leds_t::led_data_t led_status;
 

@@ -35,7 +35,7 @@ void show_leds_info(std::shared_ptr<ugreen_leds_t> leds_controller, const std::v
             continue;
         }
 
-        std::string op_mode_txt = "unknown";
+        std::string op_mode_txt;
 
         switch(data.op_mode) {
             case ugreen_leds_t::op_mode_t::off:
@@ -46,6 +46,8 @@ void show_leds_info(std::shared_ptr<ugreen_leds_t> leds_controller, const std::v
                 op_mode_txt = "blink"; break;
             case ugreen_leds_t::op_mode_t::breath:
                 op_mode_txt = "breath"; break;
+            default: 
+                op_mode_txt = "unknown"; break;
         };
 
         std::printf("%s: status = %s, brightness = %d, color = RGB(%d, %d, %d)",
@@ -171,7 +173,7 @@ int main(int argc, char *argv[])
             } );
 
             args.pop_front();
-        } else if(args.front() == "-blink" || args.front() == "-breath") {
+        } else if(args.front() == "-blink" || args.front() == "-breath" || args.front() == "-oneshot") {
             // set blink
             args.pop_front();
 
@@ -186,9 +188,12 @@ int main(int argc, char *argv[])
             args.pop_front();
 
             bool is_blink = (args.front() == "-blink");
+            bool is_oneshot = (args.front() == "-oneshot");
             ops_seq.emplace_back(true, [=, &leds_controller](led_type_pair led) {
                 if (is_blink) {
                     return leds_controller->set_blink(led.second, t_on, t_off);
+                } else if (is_oneshot) {
+                    return leds_controller->set_oneshot(led.second, t_on, t_off);
                 } else {
                     return leds_controller->set_breath(led.second, t_on, t_off);
                 }
@@ -231,6 +236,13 @@ int main(int argc, char *argv[])
 
             ops_seq.emplace_back(false, [=, &leds_controller](led_type_pair led) {
                 show_leds_info(leds_controller, { led } );
+                return 0;
+            } );
+        } else if(args.front() == "-shot") {
+            args.pop_front();
+
+            ops_seq.emplace_back(false, [=, &leds_controller](led_type_pair led) {
+                leds_controller->shot(led.second);
                 return 0;
             } );
         } else {

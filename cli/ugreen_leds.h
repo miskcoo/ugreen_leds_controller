@@ -2,6 +2,7 @@
 #define __UGREEN_LEDS_H__
 
 #include <cstdint>
+#include <iostream>
 #include <memory>
 
 #define UGREEN_LED_POWER    ugreen_leds_t::led_type_t::power
@@ -20,7 +21,7 @@ class ugreen_leds_t {
 public:
 
     enum class op_mode_t : uint8_t {
-        off = 0, on, blink, breath
+        off = 0, on, blink, breath 
     };
 
     enum class led_type_t : uint8_t {
@@ -48,7 +49,14 @@ public:
     virtual int set_brightness(led_type_t id, uint8_t brightness) = 0;
     virtual int set_blink(led_type_t id, uint16_t t_on, uint16_t t_off) = 0;
     virtual int set_breath(led_type_t id, uint16_t t_on, uint16_t t_off) = 0;
-
+    virtual int set_oneshot(led_type_t id, uint16_t t_on, uint16_t t_off) {
+        std::cerr << "oneshot mode is not supported" << std::endl;
+        return -1;
+    }
+    virtual int shot(led_type_t id) { 
+        std::cerr << "oneshot mode is not supported" << std::endl;
+        return -1;
+    }
 
 public:
     static std::shared_ptr<ugreen_leds_t> create_i2c_controller();
