@@ -121,16 +121,26 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    auto leds_controller = ugreen_leds_t::create_i2c_controller();
-    if (leds_controller->start() != 0) {
-        leds_controller = ugreen_leds_t::create_kmod_controller();
+    auto controller_creator = {
+        ugreen_leds_t::create_i2c_controller,
+        ugreen_leds_t::create_kmod_controller,
+        ugreen_leds_t::create_socket_controller
+    };
 
-        if (leds_controller->start() != 0) {
-            std::cerr << "Err: fail to open the I2C device." << std::endl;
-            std::cerr << "Please check that (1) you have the root permission; " << std::endl;
-            std::cerr << "              and (2) the i2c-dev module is loaded. " << std::endl;
-            return -1;
-        }
+    std::shared_ptr<ugreen_leds_t> leds_controller;
+
+    for (auto creator : controller_creator) {
+        leds_controller = creator();
+
+        if (leds_controller->start() == 0)
+            break;
+    }
+
+    if (!leds_controller) {
+        std::cerr << "Err: fail to open the I2C device." << std::endl;
+        std::cerr << "Please check that (1) you have the root permission; " << std::endl;
+        std::cerr << "              and (2) the i2c-dev module is loaded. " << std::endl;
+        return -1;
     }
 
     std::deque<std::string> args;
