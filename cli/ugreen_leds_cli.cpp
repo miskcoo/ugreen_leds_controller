@@ -54,7 +54,7 @@ void show_leds_info(std::shared_ptr<ugreen_leds_t> leds_controller, const std::v
                 led.first.c_str(), op_mode_txt.c_str(), (int)data.brightness, 
                 (int)data.color_r, (int)data.color_g, (int)data.color_b);
 
-        if (data.op_mode == ugreen_leds_t::op_mode_t::blink) {
+        if (data.op_mode == ugreen_leds_t::op_mode_t::blink || data.op_mode == ugreen_leds_t::op_mode_t::breath) {
             std::printf(", blink_on = %d ms, blink_off = %d ms",
                     (int)data.t_on, (int)data.t_off);
         }
@@ -188,6 +188,8 @@ int main(int argc, char *argv[])
             args.pop_front();
         } else if(args.front() == "-blink" || args.front() == "-breath" || args.front() == "-oneshot") {
             // set blink
+            bool is_blink = (args.front() == "-blink");
+            bool is_oneshot = (args.front() == "-oneshot");
             args.pop_front();
 
             if (args.size() < 2) {
@@ -200,12 +202,11 @@ int main(int argc, char *argv[])
             uint16_t t_off = parse_integer(args.front(), 0x0000, 0xffff);
             args.pop_front();
 
-            bool is_blink = (args.front() == "-blink");
-            bool is_oneshot = (args.front() == "-oneshot");
             ops_seq.emplace_back(true, [=, &leds_controller](led_type_pair led) {
                 if (is_blink) {
                     return leds_controller->set_blink(led.second, t_on, t_off);
                 } else if (is_oneshot) {
+                    leds_controller->set_onoff(led.second, true);
                     return leds_controller->set_oneshot(led.second, t_on, t_off);
                 } else {
                     return leds_controller->set_breath(led.second, t_on, t_off);

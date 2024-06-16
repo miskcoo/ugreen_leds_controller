@@ -15,7 +15,7 @@ int ugreen_leds_socket::start() {
     addr.sun_family = AF_UNIX;
     strcpy(addr.sun_path, UGREEN_LED_SOCKET_PATH);
     if (connect(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        std::cerr << "failed to connect to the socket" << std::endl;
+        // std::cerr << "failed to connect to the socket" << std::endl;
         close(sockfd);
         sockfd = -1;
         return -1;
@@ -38,9 +38,11 @@ ugreen_leds_t::led_data_t ugreen_leds_socket::get_status(led_type_t id) {
     std::string msg = std::to_string((int)id) + " status\n";
     send(sockfd, msg.c_str(), msg.size(), 0);
     // read data from the socket 
-    char buf[256];
-    recv(sockfd, buf, 256, 0);
-    std::stringstream ss(buf);
+    const int buffer_size = 1024;
+    char buf[buffer_size];
+    ssize_t bytes_read = recv(sockfd, buf, sizeof(buf), 0);
+    std::stringstream ss;
+    ss.write(buf, bytes_read);
     int is_available, op_mode, brightness, color_r, color_g, color_b, t_on, t_off;
     ss >> is_available >> op_mode >> brightness >> color_r >> color_g >> color_b >> t_on >> t_off;
     led_data_t led_data;
