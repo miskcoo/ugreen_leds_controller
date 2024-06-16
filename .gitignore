@@ -1,6 +1,7 @@
 *.o
 dx4600_leds_cli
 ugreen_leds_cli
+ugreen_daemon
 run.sh
 zpool_leds.sh
 

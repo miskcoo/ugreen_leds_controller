@@ -26,7 +26,7 @@ inline static long get_elapsed_milliseconds(
 
 class ugreen_daemon {
 
-    std::mutex pending_lock;
+    std::mutex pending_lock, applied_lock;
     std::shared_ptr<ugreen_leds_t> leds_controller;
     int probed_leds;
     ugreen_leds_t::led_data_t leds_pending[UGREEN_MAX_LEDS];
@@ -95,24 +95,27 @@ void ugreen_daemon::apply_leds(
         } else if (time_diff < oneshot_cycle) {
             op_mode = ugreen_leds_t::op_mode_t::off;
         } else {
-            op_mode = ugreen_leds_t::op_mode_t::on;
+            op_mode = led_pending.op_mode;
         }
     }
 
     if (op_mode != led_applied.op_mode) {
         switch (op_mode) {
             case ugreen_leds_t::op_mode_t::off:
-                if (leds_controller->set_onoff(led_id, false) == 0)
+                if (leds_controller->set_onoff(led_id, false) == 0) {
+                    std::lock_guard<std::mutex> lock(applied_lock);
                     led_applied.op_mode = op_mode;
-                else std::cerr << "Err: fail to turn off the led." << std::endl;
+                } else std::cerr << "Err: fail to turn off the led." << std::endl;
                 return;   // ignore other states, since the led is off
             case ugreen_leds_t::op_mode_t::on:
-                if (leds_controller->set_onoff(led_id, true) == 0)
+                if (leds_controller->set_onoff(led_id, true) == 0) {
+                    std::lock_guard<std::mutex> lock(applied_lock);
                     led_applied.op_mode = op_mode;
-                else std::cerr << "Err: fail to turn on the led." << std::endl;
+                } else std::cerr << "Err: fail to turn on the led." << std::endl;
                 break;
             case ugreen_leds_t::op_mode_t::blink:
                 if (leds_controller->set_blink(led_id, led_pending.t_on, led_pending.t_off) == 0) {
+                    std::lock_guard<std::mutex> lock(applied_lock);
                     led_applied.op_mode = op_mode;
                     led_applied.t_on = led_pending.t_on;
                     led_applied.t_off = led_pending.t_off;
@@ -120,6 +123,7 @@ void ugreen_daemon::apply_leds(
                 break;
             case ugreen_leds_t::op_mode_t::breath:
                 if (leds_controller->set_breath(led_id, led_pending.t_on, led_pending.t_off) == 0) {
+                    std::lock_guard<std::mutex> lock(applied_lock);
                     led_applied.op_mode = op_mode;
                     led_applied.t_on = led_pending.t_on;
                     led_applied.t_off = led_pending.t_off;
@@ -130,15 +134,17 @@ void ugreen_daemon::apply_leds(
     }
 
     if (led_pending.brightness != led_applied.brightness) {
-        if (leds_controller->set_brightness(led_id, led_pending.brightness) == 0)
+        if (leds_controller->set_brightness(led_id, led_pending.brightness) == 0) {
+            std::lock_guard<std::mutex> lock(applied_lock);
             led_applied.brightness = led_pending.brightness;
-        else std::cerr << "Err: fail to set the brightness." << std::endl;
+        } else std::cerr << "Err: fail to set the brightness." << std::endl;
     }
 
     if (led_pending.color_r != led_applied.color_r || 
         led_pending.color_g != led_applied.color_g || 
         led_pending.color_b != led_applied.color_b) {
         if (leds_controller->set_rgb(led_id, led_pending.color_r, led_pending.color_g, led_pending.color_b) == 0) {
+            std::lock_guard<std::mutex> lock(applied_lock);
             led_applied.color_r = led_pending.color_r;
             led_applied.color_g = led_pending.color_g;
             led_applied.color_b = led_pending.color_b;
@@ -276,13 +282,9 @@ int ugreen_daemon::accept_and_process() {
             }
         } else if (command == "on") {
             std::lock_guard<std::mutex> lock(pending_lock);
-
-            oneshot_enabled[led_id] = false;
             leds_pending[led_id].op_mode = ugreen_leds_t::op_mode_t::on;
         } else if (command == "off") {
             std::lock_guard<std::mutex> lock(pending_lock);
-
-            oneshot_enabled[led_id] = false;
             leds_pending[led_id].op_mode = ugreen_leds_t::op_mode_t::off;
         } else if (command == "blink") {
             std::string blink_type;
@@ -329,7 +331,7 @@ int ugreen_daemon::accept_and_process() {
             ugreen_leds_t::led_data_t led_status;
 
             {
-                std::lock_guard<std::mutex> lock(pending_lock);
+                std::lock_guard<std::mutex> lock(applied_lock);
                 led_status = leds_applied[led_id];
             }
 
