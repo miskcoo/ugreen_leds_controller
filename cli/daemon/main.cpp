@@ -31,7 +31,8 @@ class ugreen_daemon {
     int probed_leds;
     ugreen_leds_t::led_data_t leds_pending[UGREEN_MAX_LEDS];
     ugreen_leds_t::led_data_t leds_applied[UGREEN_MAX_LEDS];
-    bool oneshot_enabled[UGREEN_MAX_LEDS];
+    int oneshot_t_on[UGREEN_MAX_LEDS];
+    int oneshot_t_off[UGREEN_MAX_LEDS];
     std::chrono::milliseconds oneshot_start_time[UGREEN_MAX_LEDS];
 
     bool exit_flag;
@@ -53,7 +54,7 @@ public:
         ugreen_leds_t::led_type_t led_id, 
         ugreen_leds_t::led_data_t &led_applied,
         ugreen_leds_t::led_data_t &led_pending,
-        bool oneshot_enabled,
+        int oneshot_t_on, int oneshot_t_off,
         std::chrono::milliseconds oneshot_start_time
     );
 };
@@ -61,20 +62,23 @@ public:
 void ugreen_daemon::apply_leds() {
 
     ugreen_leds_t::led_data_t leds_pending_copy[UGREEN_MAX_LEDS];
-    bool oneshot_enabled_copy[UGREEN_MAX_LEDS];
+    int oneshot_t_on_copy[UGREEN_MAX_LEDS];
+    int oneshot_t_off_copy[UGREEN_MAX_LEDS];
     std::chrono::milliseconds oneshot_start_time_copy[UGREEN_MAX_LEDS];
 
     {
         std::lock_guard<std::mutex> lock(pending_lock);
         std::copy(leds_pending, leds_pending + probed_leds, leds_pending_copy);
-        std::copy(oneshot_enabled, oneshot_enabled + probed_leds, oneshot_enabled_copy);
+        std::copy(oneshot_t_on, oneshot_t_on + probed_leds, oneshot_t_on_copy);
+        std::copy(oneshot_t_off, oneshot_t_off + probed_leds, oneshot_t_off_copy);
         std::copy(oneshot_start_time, oneshot_start_time + probed_leds, oneshot_start_time_copy);
     }
 
     for (int i = 0; i < probed_leds; ++i) {
         apply_leds((ugreen_leds_t::led_type_t)i, 
                 leds_applied[i], leds_pending_copy[i],
-                oneshot_enabled_copy[i], oneshot_start_time_copy[i]);
+                oneshot_t_on_copy[i], oneshot_t_off_copy[i], 
+                oneshot_start_time_copy[i]);
     }
 }
 
@@ -82,19 +86,17 @@ void ugreen_daemon::apply_leds(
     ugreen_leds_t::led_type_t led_id, 
     ugreen_leds_t::led_data_t &led_applied,
     ugreen_leds_t::led_data_t &led_pending,
-    bool oneshot_enabled,
+    int oneshot_t_on, int oneshot_t_off,
     std::chrono::milliseconds oneshot_start_time
 ) {
     auto op_mode = led_pending.op_mode;
 
-    if (oneshot_enabled) {
-        auto time_diff = get_elapsed_milliseconds(oneshot_start_time);
-        int oneshot_cycle = led_pending.t_on + led_pending.t_off;
-        if (time_diff < led_pending.t_on) {
-            op_mode = ugreen_leds_t::op_mode_t::on;
-        } else if (time_diff < oneshot_cycle) {
-            op_mode = ugreen_leds_t::op_mode_t::off;
-        }
+    auto time_diff = get_elapsed_milliseconds(oneshot_start_time);
+    int oneshot_cycle = oneshot_t_on + oneshot_t_off;
+    if (time_diff < oneshot_t_on) {
+        op_mode = ugreen_leds_t::op_mode_t::on;
+    } else if (time_diff < oneshot_cycle) {
+        op_mode = ugreen_leds_t::op_mode_t::off;
     }
 
     if (op_mode != led_applied.op_mode) {
@@ -187,7 +189,8 @@ ugreen_daemon::ugreen_daemon(const char *sock_path) {
     probed_leds = UGREEN_MAX_LEDS;
     for (int i = 0; i < UGREEN_MAX_LEDS; ++i) {
         leds_pending[i] = leds_applied[i] = leds_controller->get_status((ugreen_leds_t::led_type_t)i);
-        std::fill_n(oneshot_enabled, UGREEN_MAX_LEDS, false);
+        std::fill_n(oneshot_t_on, UGREEN_MAX_LEDS, 100);
+        std::fill_n(oneshot_t_off, UGREEN_MAX_LEDS, 100);
         std::fill_n(oneshot_start_time, UGREEN_MAX_LEDS, std::chrono::milliseconds(0));
         if (!leds_applied[i].is_available) {
             probed_leds = i;
@@ -292,10 +295,8 @@ int ugreen_daemon::accept_and_process() {
             std::lock_guard<std::mutex> lock(pending_lock);
 
             if (blink_type == "blink") {
-                oneshot_enabled[led_id] = false;
                 leds_pending[led_id].op_mode = ugreen_leds_t::op_mode_t::blink;
             } else if(blink_type == "breath") {
-                oneshot_enabled[led_id] = false;
                 leds_pending[led_id].op_mode = ugreen_leds_t::op_mode_t::breath;
             } else {
                 std::cerr << "Err: invalid blink type." << std::endl;
@@ -314,9 +315,8 @@ int ugreen_daemon::accept_and_process() {
                     || leds_pending[led_id].op_mode == ugreen_leds_t::op_mode_t::breath) 
                 leds_pending[led_id].op_mode = ugreen_leds_t::op_mode_t::on;
 
-            leds_pending[led_id].t_on = std::min(0x7fff, std::max(50, t_on));
-            leds_pending[led_id].t_off = std::min(0x7fff, std::max(50, t_off));
-            oneshot_enabled[led_id] = true;
+            oneshot_t_on[led_id] = std::min(0x7fff, std::max(50, t_on));
+            oneshot_t_off[led_id] = std::min(0x7fff, std::max(50, t_off));
         } else if (command == "shot") {
 
             std::lock_guard<std::mutex> lock(pending_lock);
@@ -325,8 +325,8 @@ int ugreen_daemon::accept_and_process() {
 
             auto time_diff = get_elapsed_milliseconds(oneshot_start_time[led_id]);
 
-            int oneshot_cycle = leds_pending[led_id].t_on + leds_pending[led_id].t_off;
-            if (time_diff > oneshot_cycle || !oneshot_enabled[led_id]) {
+            int oneshot_cycle = oneshot_t_on[led_id] + oneshot_t_off[led_id];
+            if (time_diff > oneshot_cycle) {
                 oneshot_start_time[led_id] = get_now_milliseconds();
             }
         } else if (command == "status") {
