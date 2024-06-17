@@ -11,6 +11,19 @@ led_map=(disk1 disk2 disk3 disk4 disk5 disk6 disk7 disk8)
 #           hctl_map=("4:0:0:0" "5:0:0:0" "0:0:0:0" "1:0:0:0" "2:0:0:0" "3:0:0:0" "6:0:0:0" "7:0:0:0")
 #       Please check the disk mapping section in https://github.com/miskcoo/ugreen_dx4600_leds_controller/blob/master/README.md.
 hctl_map=("0:0:0:0" "1:0:0:0" "2:0:0:0" "3:0:0:0" "4:0:0:0" "5:0:0:0" "6:0:0:0" "7:0:0:0")
+if which dmidecode; then
+    product_name=$(dmidecode --string system-product-name)
+    case "${product_name}" in 
+        "DXP6800 Pro")
+          echo "Found UGREEN DXP6800 Pro" 
+          hctl_map=("2:0:0:0" "3:0:0:0" "4:0:0:0" "5:0:0:0" "0:0:0:0" "1:0:0:0")
+          ;;
+        "DX4600 Pro")
+          echo "Found UGREEN DX4600 Pro" 
+          hctl_map=("0:0:0:0" "1:0:0:0" "2:0:0:0" "3:0:0:0")
+          ;;
+    esac
+fi 
 # serial number, $> lsblk -S -x hctl -o hctl,serial,name 
 serial_map=("placeholder0" "placeholder1" "placeholder2" "placeholder3" "placeholder4" "placeholder5" "placeholder6" "placeholder7")
 declare -A devices
