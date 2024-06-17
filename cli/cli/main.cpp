@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
 
         if (leds_controller->start() == 0) {
             // output creator name
-            std::cout << "Using " << leds_controller->get_name() << " controller." << std::endl;
+            // std::cout << "Using " << leds_controller->get_name() << " controller." << std::endl;
             break;
         }
     }

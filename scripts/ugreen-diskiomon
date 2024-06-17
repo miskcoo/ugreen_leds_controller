@@ -67,7 +67,7 @@ while true; do
         diskio_old_r=${diskio_data_r[$led]}
         diskio_old_w=${diskio_data_w[$led]}
 
-        if [[ "$(cat /sys/class/leds/$led/color)" = "255 0 0" ]]; then
+        if ugreen_leds_cli $led | grep "RGB(255, 0, 0)"; then
             continue;
         fi
 

@@ -66,7 +66,13 @@ $ i2cdetect -y 1
 
 ## Build & Usage
 
-**Note**: The kernel module and the command-line tool are conflict. To use the command-line tool, you must unload the `led_ugreen` module.
+There are three methods to control the LEDs: stateless, userspace daemon, kernel module.
+
+- **stateless**: the simplest way is to direct build and run the `ugreen_leds_cli` tool. It will find and communicate directly with `/dev/i2c-X`, and does not save the current state of LEDs. Therefore, it is unable to implement the stateful functions like blink an LED once.
+- **userspace daemon**: it also communicates with `/dev/i2c-X`, but will maintain the LEDs' states and create a socket `/tmp/led-ugreen.socket`. The tool `ugreen_leds_cli` will communicate with the daemon via the socket. This method allows a similar function like `oneshot` trigger in the kernel module. You can run `ugreen_leds_cli disk1 -oneshot 100 100` to setup the trigger and run `ugreen_leds_cli disk1 -shot` to blink `disk1` once. To use this daemon, you should first run `ugreen_daemon` and then use `ugreen_leds_cli` as before.
+- **kernel module**: it will register LEDs in `/sys/class/leds`, therefore, any triggers supported by the kernel are also usable.
+
+The `ugreen_leds_cli` tool is suitable for all three methods. It will first check whether `/tmp/led-ugreen.socket` exists, and then check whether `/sys/class/leds` contains corresponding LEDs. If both of them do not exist, then it will try to use the stateless method.
 
 ### The Command-line Tool
 
@@ -79,8 +85,8 @@ Usage: ugreen_leds_cli  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]
        LED_NAME:    separated by white space, possible values are
                     { power, netdev, disk[1-8], all }.
        -on / -off:  turn on / off corresponding LEDs.
-       -blink / -breath:  set LED to the blink / breath mode. This
-                    mode keeps the LED on for T_ON millseconds and then
+       -blink / -breath / -oneshot:  set LED to the blink / breath / oneshot mode. 
+                    This mode keeps the LED on for T_ON millseconds and then
                     keeps it off for T_OFF millseconds.
                     T_ON and T_OFF should belong to [0, 65535].
        -color:      set the color of corresponding LEDs.
@@ -88,6 +94,7 @@ Usage: ugreen_leds_cli  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]
        -brightness: set the brightness of corresponding LEDs.
                     BRIGHTNESS should belong to [0, 255].
        -status:     display the status of corresponding LEDs.
+       -shot:       emit a blink cycle of corresponding LEDs.
 ```
 
 Below is an example:
