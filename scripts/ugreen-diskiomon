@@ -6,9 +6,6 @@ led_map=(disk1 disk2 disk3 disk4 disk5 disk6 disk7 disk8)
 
 # hctl, $> lsblk -S -x hctl -o hctl,serial,name 
 # NOTE: It is reported that the order below should be adjusted for each model. 
-#       It is tested that the following order is correct in DX4600 Pro and DXP8800 Plus.
-#       But for DXP6800 Pro, it should be 
-#           hctl_map=("4:0:0:0" "5:0:0:0" "0:0:0:0" "1:0:0:0" "2:0:0:0" "3:0:0:0" "6:0:0:0" "7:0:0:0")
 #       Please check the disk mapping section in https://github.com/miskcoo/ugreen_dx4600_leds_controller/blob/master/README.md.
 hctl_map=("0:0:0:0" "1:0:0:0" "2:0:0:0" "3:0:0:0" "4:0:0:0" "5:0:0:0" "6:0:0:0" "7:0:0:0")
 if which dmidecode; then
