@@ -145,7 +145,7 @@ echo 1 > /sys/class/leds/$led/rx
 echo 100 > /sys/class/leds/$led/interval
 ```
 
-To blink the `disk` LED when a block device is active, you can use the `ledtrig-oneshot` module and monitor the changes of`/sys/block/sda/stat` (see `scripts/ugreen-diskiomon` for an example). If you are using zfs, you can combine this script with that provided in [#1](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/1) to change the LED's color when a disk drive failure occurs. 
+To blink the `disk` LED when a block device is active, you can use the `ledtrig-oneshot` module and monitor the changes of`/sys/block/sda/stat` (see `scripts/ugreen-diskiomon` for an example). If you are using zfs, you can combine this script with that provided in [#1](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/1) to change the LED's color when a disk drive failure occurs. To see how to map the disk LEDs to correct disk slots, please read the [Disk Mapping](#disk-mapping) section.
 
 #### Start at Boot (for Debian 12)
 
@@ -180,6 +180,27 @@ systemctl start ugreen-ledmon@enp2s0
 # run the command below to make the service start at boot
 systemctl enable ugreen-ledmon@enp2s0 
 ```
+
+## Disk Mapping
+
+To make the disk LEDs useful, we should map the disk LEDs to correct disk slots. First of all, we should highlight that using `/dev/sdX` is never a smart idea, as it may change at every boot. In the script `ugreen-diskiomon` we provide two mapping methods: **by HCTL** and **by serial**. 
+
+The HCTL mapping depends on how the SATA controllers are connected to the PCIe bus and the disk slots. To check the HCTL order, you can run the following command, and check the serial of your disks:
+
+```bash
+# lsblk -S -x hctl -o name,hctl,serial
+NAME HCTL       SERIAL
+sda  0:0:0:0    XXKEREXX
+sdc  1:0:0:0    XXKG2BXX
+sdb  2:0:0:0    XXGMU6XX
+sdd  3:0:0:0    XXKJEZXX
+sde  4:0:0:0    XXKJHBXX
+sdf  5:0:0:0    XXGT2ZXX
+sdg  6:0:0:0    XXKH3SXX
+sdh  7:0:0:0    XXJDB1XX
+```
+
+As far as we know, the mapping between HCTL and the disk serial are stable at each boot (see [#4](https://github.com/miskcoo/ugreen_dx4600_leds_controller/pull/4) and [#9](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/9)). However, it has been reported that the exact order is model-dependent (see [#9](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/9)). In DX4600 Pro and DXP8800 Plus, the mapping is `X:0:0:0 -> diskX`, but In the DXP6800 Pro, `0:0:0:0` and  `1:0:0:0` are mapped to `disk5` and `disk6`, and `2:0:0:0` to `6:0:0:0` are mapped to `disk1` to `disk4`, so you should change the array `hctl_map` in `ugreen-diskiomon` accordingly.
 
 ## Communication Protocols
 
