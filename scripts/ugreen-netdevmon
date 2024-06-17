@@ -6,7 +6,7 @@ sleep 2
 
 led="netdev"
 
-if [[ -f /sys/class/leds ]]; then
+if [[ -f /sys/class/leds/$led ]]; then
     echo netdev > /sys/class/leds/$led/trigger
     echo $1 > /sys/class/leds/$led/device_name
     echo 1 > /sys/class/leds/$led/link
