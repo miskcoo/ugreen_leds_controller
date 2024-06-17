@@ -17,9 +17,22 @@ if which dmidecode; then
           ;;
         "DX4600 Pro")
           echo "Found UGREEN DX4600 Pro" 
-          hctl_map=("0:0:0:0" "1:0:0:0" "2:0:0:0" "3:0:0:0")
+          # using the default mapping
+          ;;
+        "DXP8800 Plus")
+          echo "Found UGREEN DXP8800 Plus" 
+          # using the default mapping
+          ;;
+        *)
+          if [[ "${mapping_method}" = "hctl" ]]; then
+              echo "Using the default HCTL order. Please check it maps to your disk slots correctly."
+              echo "If you confirm that the HCTL order is correct, or find it is different, you can submit an issue to let us know, so we can update the script."
+              echo "(Read the disk mapping section in https://github.com/miskcoo/ugreen_dx4600_leds_controller/blob/master/README.md for more details)"
+          fi
           ;;
     esac
+elif [[ "${mapping_method}" = "hctl" ]]; then
+    echo "installing the tool `dmidecode` is suggested; otherwise the script cannot detect your device and adjust the hctl_map"
 fi 
 # serial number, $> lsblk -S -x hctl -o hctl,serial,name 
 serial_map=("placeholder0" "placeholder1" "placeholder2" "placeholder3" "placeholder4" "placeholder5" "placeholder6" "placeholder7")
