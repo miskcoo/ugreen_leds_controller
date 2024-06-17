@@ -94,8 +94,6 @@ void ugreen_daemon::apply_leds(
             op_mode = ugreen_leds_t::op_mode_t::on;
         } else if (time_diff < oneshot_cycle) {
             op_mode = ugreen_leds_t::op_mode_t::off;
-        } else {
-            op_mode = led_pending.op_mode;
         }
     }
 
@@ -311,6 +309,10 @@ int ugreen_daemon::accept_and_process() {
             ss >> t_on >> t_off;
 
             std::lock_guard<std::mutex> lock(pending_lock);
+
+            if (leds_pending[led_id].op_mode == ugreen_leds_t::op_mode_t::blink 
+                    || leds_pending[led_id].op_mode == ugreen_leds_t::op_mode_t::breath) 
+                leds_pending[led_id].op_mode = ugreen_leds_t::op_mode_t::on;
 
             leds_pending[led_id].t_on = std::min(0x7fff, std::max(50, t_on));
             leds_pending[led_id].t_off = std::min(0x7fff, std::max(50, t_off));
