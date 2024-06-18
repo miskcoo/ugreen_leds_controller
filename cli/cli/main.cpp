@@ -70,7 +70,8 @@ void show_help() {
            "       LED_NAME:    separated by white space, possible values are\n"
            "                    { power, netdev, disk[1-8], all }.\n"
            "       -on / -off:  turn on / off corresponding LEDs.\n"
-           "       -blink / -breath:  set LED to the blink / breath mode. This \n"
+           "       -blink / -breath / -oneshot:  \n"
+           "                    set LED to the blink / breath / oneshot mode. This \n"
            "                    mode keeps the LED on for T_ON millseconds and then\n"
            "                    keeps it off for T_OFF millseconds. \n"
            "                    T_ON and T_OFF should belong to [0, 65535].\n"
@@ -79,6 +80,8 @@ void show_help() {
            "       -brightness: set the brightness of corresponding LEDs.\n"
            "                    BRIGHTNESS should belong to [0, 255].\n"
            "       -status:     display the status of corresponding LEDs.\n"
+           "       -shot:       emit a blink cycle of corresponding LEDs.\n\n"
+           "See https://github.com/miskcoo/ugreen_dx4600_leds_controller for more details.\n"
         << std::endl;
 }
 

@@ -1,12 +1,12 @@
 #!/usr/bin/bash
 
-{ lsmod | grep ledtrig_netdev ; } || modprobe -v ledtrig_netdev
+{ lsmod | grep ledtrig_netdev > /dev/null ; } || modprobe -v ledtrig_netdev
 
 sleep 2
 
 led="netdev"
 
-if [[ -f /sys/class/leds/$led ]]; then
+if [[ -f /sys/class/leds/$led/blink_type ]]; then
     echo netdev > /sys/class/leds/$led/trigger
     echo $1 > /sys/class/leds/$led/device_name
     echo 1 > /sys/class/leds/$led/link

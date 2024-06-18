@@ -8,9 +8,9 @@
 #include <mutex>
 #include <thread>
 #include <chrono>
-#include <ctime>
 
 #define UGREEN_MAX_LEDS 10
+#define WORKING_THREAD_INTERVAL 20
 
 inline static std::chrono::milliseconds get_now_milliseconds() {
 
@@ -203,9 +203,16 @@ ugreen_daemon::ugreen_daemon(const char *sock_path) {
     // initialize the working thread
     exit_flag = false;
     working_thread = std::thread([this] {
+        using namespace std::chrono;
+        steady_clock clock;
         while (!exit_flag) {
+            auto start_time = clock.now();
             apply_leds();
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            auto end_time = clock.now();
+            auto elapsed_time = duration_cast<milliseconds>(end_time - start_time).count();
+            if (elapsed_time < WORKING_THREAD_INTERVAL) {
+                std::this_thread::sleep_for(milliseconds(WORKING_THREAD_INTERVAL - elapsed_time));
+            }
         }
     });
 }
