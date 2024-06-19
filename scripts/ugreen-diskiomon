@@ -145,13 +145,11 @@ else
     ZPOOL_LEDS=""
 fi
 
-declare -A diskio_data_r
-declare -A diskio_data_w
+declare -A diskio_data_rw
 while true; do
     for led in "${!devices[@]}"; do
         dev=${devices[$led]}
-        diskio_old_r=${diskio_data_r[$led]}
-        diskio_old_w=${diskio_data_w[$led]}
+        diskio_old_rw="${diskio_data_rw[$led]}"
 
         if [[ "$(cat /sys/class/leds/$led/color)" = "255 0 0" ]]; then
             continue;
@@ -163,15 +161,13 @@ while true; do
             continue
         fi
 
-        diskio_new_r=$(cat /sys/block/${dev}/stat | awk '{ print $1 }')
-        diskio_new_w=$(cat /sys/block/${dev}/stat | awk '{ print $5 }')
+        diskio_new_rw="$(cat /sys/block/${dev}/stat)"
 
-        if [ "${diskio_old_r}" != "${diskio_new_r}" ] || [ "${diskio_old_w}" != "${diskio_new_w}" ]; then
+        if [ "${diskio_old_rw}" != "${diskio_new_rw}" ]; then
             echo 1 > /sys/class/leds/$led/shot
         fi
 
-        diskio_data_r[$led]=$diskio_new_r
-        diskio_data_w[$led]=$diskio_new_w
+        diskio_data_rw[$led]=$diskio_new_rw
     done
 
     ${ZPOOL_LEDS}
