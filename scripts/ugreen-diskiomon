@@ -124,11 +124,14 @@ if [ "$CHECK_SMART" = true ]; then
                 continue;
             fi
 
+            dev=${devices[$led]}
+
             if [[ -z $(smartctl -H /dev/${dev} | grep PASSED) ]]; then
                 echo "255 0 0" > /sys/class/leds/$led/color
                 echo Disk failure detected on /dev/$dev at $(date +%Y-%m-%d' '%H:%M:%S)
                 continue
             fi
+        done
         sleep ${CHECK_SMART_INTERVAL}s
     done
 ) &
