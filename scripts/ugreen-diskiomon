@@ -18,8 +18,13 @@ if [[ -f "/var/run/ugreen-diskiomon.lock" ]]; then
 fi
 touch /var/run/ugreen-diskiomon.lock
 
+# use variables from config file (unRAID specific)
+if [[ -f /boot/config/plugins/ugreenleds-driver/settings.cfg ]]; then
+  source /boot/config/plugins/ugreenleds-driver/settings.cfg
+fi
+
 # led-disk mapping (see https://github.com/miskcoo/ugreen_dx4600_leds_controller/pull/4)
-mapping_method=${mapping_method:=hctl} # hctl, serial
+MAPPING_METHOD=${MAPPING_METHOD:=hctl} # hctl, serial
 led_map=(disk1 disk2 disk3 disk4 disk5 disk6 disk7 disk8)
 
 # hctl, $> lsblk -S -x hctl -o hctl,serial,name 
@@ -42,14 +47,14 @@ if which dmidecode; then
           # using the default mapping
           ;;
         *)
-          if [[ "${mapping_method}" = "hctl" ]]; then
+          if [[ "${MAPPING_METHOD}" = "hctl" ]]; then
               echo "Using the default HCTL order. Please check it maps to your disk slots correctly."
               echo "If you confirm that the HCTL order is correct, or find it is different, you can submit an issue to let us know, so we can update the script."
               echo "(Read the disk mapping section in https://github.com/miskcoo/ugreen_dx4600_leds_controller/blob/master/README.md for more details)"
           fi
           ;;
     esac
-elif [[ "${mapping_method}" = "hctl" ]]; then
+elif [[ "${MAPPING_METHOD}" = "hctl" ]]; then
     echo "installing the tool `dmidecode` is suggested; otherwise the script cannot detect your device and adjust the hctl_map"
 fi 
 # serial number, $> lsblk -S -x hctl -o hctl,serial,name 
@@ -73,24 +78,24 @@ LED_REFRESH_INTERVAL=${LED_REFRESH_INTERVAL:=0.1}
 
 sleep 2
 
-echo Enumerating disks based on $mapping_method...
+echo Enumerating disks based on $MAPPING_METHOD...
 declare -A dev_map
 while read line
 do
     blk_line=($line)
-    if [[ $mapping_method = hctl ]]; then
+    if [[ $MAPPING_METHOD = hctl ]]; then
         key=${blk_line[1]}
         val=${blk_line[0]}
-    elif [[ $mapping_method = serial ]]; then
+    elif [[ $MAPPING_METHOD = serial ]]; then
         key=${blk_line[1]}
         val=${blk_line[0]}
     else
-        echo Unsupported mapping method: ${mapping_method}
+        echo Unsupported mapping method: ${MAPPING_METHOD}
         exit 1
     fi
     dev_map[${key}]=${val}
-    echo $mapping_method ${key} ">>" ${dev_map[${key}]}
-done <<< "$(lsblk -S -o name,${mapping_method} | tail -n +2)"
+    echo $MAPPING_METHOD ${key} ">>" ${dev_map[${key}]}
+done <<< "$(lsblk -S -o name,${MAPPING_METHOD} | tail -n +2)"
 
 for i in "${!led_map[@]}"; do
     led=${led_map[i]} 
@@ -102,7 +107,7 @@ for i in "${!led_map[@]}"; do
         echo "255 255 255" > /sys/class/leds/$led/color
 
         # find corresponding device
-        _tmp_str=${mapping_method}_map[@]
+        _tmp_str=${MAPPING_METHOD}_map[@]
         _tmp_arr=(${!_tmp_str})
         dev=${dev_map[${_tmp_arr[i]}]}
         if [[ -f /sys/class/block/${dev}/stat ]]; then
