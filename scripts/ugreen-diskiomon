@@ -79,7 +79,7 @@ CHECK_ZPOOL=${CHECK_ZPOOL:=false}
 CHECK_ZPOOL_INTERVAL=${CHECK_ZPOOL_INTERVAL:=5}
 
 
-{ lsmod | grep ledtrig_oneshot ; } || modprobe -v ledtrig_oneshot
+{ lsmod | grep ledtrig_oneshot > /dev/null; } || modprobe -v ledtrig_oneshot
 
 sleep 2
 
@@ -117,9 +117,10 @@ for i in "${!led_map[@]}"; do
         _tmp_str=${MAPPING_METHOD}_map[@]
         _tmp_arr=(${!_tmp_str})
         dev=${dev_map[${_tmp_arr[i]}]}
-        dev_to_led_map[$dev]=$led
+
         if [[ -f /sys/class/block/${dev}/stat ]]; then
             devices[$led]=${dev}
+            dev_to_led_map[$dev]=$led
         else
             # turn off the led if no disk installed on this slot
             echo 0 > /sys/class/leds/$led/brightness
@@ -172,14 +173,24 @@ if [ "$CHECK_ZPOOL" = true ]; then
                 if [[ -v "zpool_ledmap[${zpool_dev_name}]" ]]; then
                     led=${zpool_ledmap[$zpool_dev_name]}
 
-                    case "${zpool_dev_state}" in
-                        ONLINE)
-                            echo "255 255 255" > /sys/class/leds/$led/color
-                            ;;
-                        *)
-                            echo "255 0 0" > /sys/class/leds/$led/color
-                            ;;
-                    esac
+                    if [[ "$(cat /sys/class/leds/$led/color)" = "255 0 0" ]]; then
+                        continue;
+                    fi
+
+                    if [[ "${zpool_dev_state}" != "ONLINE" ]]; then
+                        echo "255 0 0" > /sys/class/leds/$led/color
+                        echo Disk failure detected on /dev/$dev at $(date +%Y-%m-%d' '%H:%M:%S)
+                    fi
+
+                    # ==== To recover from an error, you should restart the script ====
+                    ## case "${zpool_dev_state}" in
+                    ##     ONLINE)
+                    ##         # echo "255 255 255" > /sys/class/leds/$led/color
+                    ##         ;;
+                    ##     *)
+                    ##         echo "255 0 0" > /sys/class/leds/$led/color
+                    ##         ;;
+                    ## esac
                 fi
             done <<< "$(zpool status -L | egrep ^\\s*\(sd\|dm\))"
 
