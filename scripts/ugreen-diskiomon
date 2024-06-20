@@ -88,7 +88,7 @@ sleep 2
 
 function disk_enumerating_string() {
     if [[ $MAPPING_METHOD = ata ]]; then
-        ls -ahl /sys/block | awk '{
+        ls -ahl /sys/block | sed 's/\/$//' | awk '{
             if (match($0, /ata[0-9]+/)) {
                 ata = substr($0, RSTART, RLENGTH);
                 if (match($0, /[^\/]+$/)) {
