@@ -23,6 +23,11 @@ if [[ -f /boot/config/plugins/ugreenleds-driver/settings.cfg ]]; then
   source /boot/config/plugins/ugreenleds-driver/settings.cfg
 fi
 
+# load environment variables
+if [[ -f /etc/ugreen-leds.conf ]]; then
+  source /etc/ugreen-leds.conf
+fi
+
 # led-disk mapping (see https://github.com/miskcoo/ugreen_dx4600_leds_controller/pull/4)
 MAPPING_METHOD=${MAPPING_METHOD:=ata} # ata, hctl, serial
 led_map=(disk1 disk2 disk3 disk4 disk5 disk6 disk7 disk8)
