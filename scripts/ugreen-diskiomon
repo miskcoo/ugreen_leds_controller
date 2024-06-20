@@ -101,7 +101,7 @@ COLOR_SMART_FAIL=${COLOR_SMART_FAIL:="255 0 0"}
 sleep 2
 
 function disk_enumerating_string() {
-    if [[ $MAPPING_METHOD = ata ]]; then
+    if [[ $MAPPING_METHOD == ata ]]; then
         ls -ahl /sys/block | sed 's/\/$//' | awk '{
             if (match($0, /ata[0-9]+/)) {
                 ata = substr($0, RSTART, RLENGTH);
@@ -111,7 +111,7 @@ function disk_enumerating_string() {
                 }
             }
         }'
-    elif [[ $MAPPING_METHOD = hctl ]] || [[ $MAPPING_METHOD = serial ]]; then
+    elif [[ $MAPPING_METHOD == hctl || $MAPPING_METHOD == serial ]]; then
         lsblk -S -o name,${MAPPING_METHOD},tran | grep sata
     else
         echo Unsupported mapping method: ${MAPPING_METHOD}

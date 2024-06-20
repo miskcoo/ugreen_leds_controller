@@ -1,6 +1,26 @@
 #!/usr/bin/bash
 
-{ lsmod | grep ledtrig_netdev ; } || modprobe -v ledtrig_netdev
+# function for removing lockfile
+exit-ugreen-netdevmon() {
+  if [[ -f "/var/run/ugreen-netdevmon.lock" ]]; then
+    rm "/var/run/ugreen-netdevmon.lock"
+  fi
+  kill $smart_check_pid 2>/dev/null
+  kill $zpool_check_pid 2>/dev/null
+  kill $disk_online_check_pid 2>/dev/null
+}
+
+# trap exit and remove lockfile
+trap 'exit-ugreen-netdevmon' EXIT
+
+# check if script is already running
+if [[ -f "/var/run/ugreen-netdevmon.lock" ]]; then
+  echo "ugreen-netdevmon already running!"
+  exit 1
+fi
+touch /var/run/ugreen-netdevmon.lock
+
+{ lsmod | grep ledtrig_netdev > /dev/null; } || modprobe -v ledtrig_netdev
 
 sleep 2
 
@@ -9,12 +29,58 @@ if [[ -f /etc/ugreen-leds.conf ]]; then
   source /etc/ugreen-leds.conf
 fi
 
+COLOR_NETDEV_NORMAL=${COLOR_NETDEV_NORMAL:="255 255 255"} 
+COLOR_NETDEV_GATEWAY_UNREACHABLE=${COLOR_NETDEV_GATEWAY_UNREACHABLE:="255 0 0"} 
+
+CHECK_NETDEV_INTERVAL=${CHECK_NETDEV_INTERVAL:=60} 
+CHECK_GATEWAY_CONNECTIVITY=${CHECK_GATEWAY_CONNECTIVITY:=false} 
+CHECK_LINK_SPEED=${CHECK_LINK_SPEED:=false} 
+
 led="netdev"
+netdev_name=$1
 echo netdev > /sys/class/leds/$led/trigger
-echo $1 > /sys/class/leds/$led/device_name
+echo $netdev_name > /sys/class/leds/$led/device_name
 echo 1 > /sys/class/leds/$led/link
 echo ${NETDEV_BLINK_TX:=1} > /sys/class/leds/$led/tx
 echo ${NETDEV_BLINK_RX:=1} > /sys/class/leds/$led/rx
 echo ${NETDEV_BLINK_INTERVAL:=200} > /sys/class/leds/$led/interval
+echo $COLOR_NETDEV_NORMAL > /sys/class/leds/$led/color
+
+function set_netdev_normal_color() {
+    color=$COLOR_NETDEV_NORMAL
+
+    if [[ $CHECK_LINK_SPEED == true ]]; then
+        case $(cat /sys/class/net/$netdev_name/speed) in
+            100)   color=${COLOR_NETDEV_LINK_100:=$COLOR_NETDEV_NORMAL};;
+            1000)  color=${COLOR_NETDEV_LINK_1000:=$COLOR_NETDEV_NORMAL};;
+            2500)  color=${COLOR_NETDEV_LINK_2500:=$COLOR_NETDEV_NORMAL};;
+            10000) color=${COLOR_NETDEV_LINK_10000:=$COLOR_NETDEV_NORMAL};;
+        esac
+    fi
+
+    echo $color > /sys/class/leds/$led/color
+}
+
+gw_conn=1
+
+while true; do
+
+    if [[ $CHECK_GATEWAY_CONNECTIVITY == true ]]; then
+        gw=$(ip route | awk '/default/ { print $3 }')
+        if ping -q -c 1 -W 1 $gw >/dev/null; then
+            gw_conn=1
+        else
+            gw_conn=0
+        fi
+    fi
+
+    if [[ $gw_conn == 1 ]]; then
+        set_netdev_normal_color
+    else
+        echo $COLOR_NETDEV_GATEWAY_UNREACHABLE > /sys/class/leds/$led/color
+    fi
 
 
+    sleep ${CHECK_NETDEV_INTERVAL}s
+
+done
