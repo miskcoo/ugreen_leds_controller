@@ -93,8 +93,8 @@ function disk_enumerating_string() {
                 ata = substr($0, RSTART, RLENGTH);
                 if (match($0, /[^\/]+$/)) {
                     basename = substr($0, RSTART, RLENGTH);
+                    print basename, ata;
                 }
-                print basename, ata;
             }
         }'
     elif [[ $MAPPING_METHOD = hctl ]] || [[ $MAPPING_METHOD = serial ]]; then
