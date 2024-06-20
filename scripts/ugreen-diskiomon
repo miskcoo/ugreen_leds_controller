@@ -170,6 +170,8 @@ if [ "$CHECK_ZPOOL" = true ]; then
                 zpool_dev_name=${zpool_dev_line[0]} 
                 zpool_dev_state=${zpool_dev_line[1]}
 
+                # TODO: do something if the pool is unhealthy?
+
                 if [[ -v "zpool_ledmap[${zpool_dev_name}]" ]]; then
                     led=${zpool_ledmap[$zpool_dev_name]}
 
