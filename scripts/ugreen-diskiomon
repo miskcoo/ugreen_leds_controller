@@ -90,6 +90,11 @@ CHECK_ZPOOL_INTERVAL=${CHECK_ZPOOL_INTERVAL:=5}
 # polling rate for checking disk online. 5 seconds by default
 CHECK_DISK_ONLINE_INTERVAL=${CHECK_DISK_ONLINE_INTERVAL:=5}
 
+COLOR_DISK_HEALTH=${COLOR_DISK_HEALTH:="255 255 255"}
+COLOR_DISK_UNAVAIL=${COLOR_DISK_UNAVAIL:="255 0 0"}
+COLOR_ZPOOL_FAIL=${COLOR_ZPOOL_FAIL:="255 0 0"}
+COLOR_SMART_FAIL=${COLOR_SMART_FAIL:="255 0 0"}
+
 
 { lsmod | grep ledtrig_oneshot > /dev/null; } || modprobe -v ledtrig_oneshot
 
@@ -134,7 +139,7 @@ for i in "${!led_map[@]}"; do
         echo 1 > /sys/class/leds/$led/invert
         echo 100 > /sys/class/leds/$led/delay_on
         echo 100 > /sys/class/leds/$led/delay_off
-        echo "255 255 255" > /sys/class/leds/$led/color
+        echo "$COLOR_DISK_HEALTH" > /sys/class/leds/$led/color
 
         # find corresponding device
         _tmp_str=${MAPPING_METHOD}_map[@]
@@ -198,19 +203,19 @@ if [ "$CHECK_ZPOOL" = true ]; then
                 if [[ -v "zpool_ledmap[${zpool_dev_name}]" ]]; then
                     led=${zpool_ledmap[$zpool_dev_name]}
 
-                    if [[ "$(cat /sys/class/leds/$led/color)" = "255 0 0" ]]; then
+                    if [[ "$(cat /sys/class/leds/$led/color)" != "$COLOR_DISK_HEALTH" ]]; then
                         continue;
                     fi
 
                     if [[ "${zpool_dev_state}" != "ONLINE" ]]; then
-                        echo "255 0 0" > /sys/class/leds/$led/color
+                        echo "$COLOR_ZPOOL_FAIL" > /sys/class/leds/$led/color
                         echo Disk failure detected on /dev/$dev at $(date +%Y-%m-%d' '%H:%M:%S)
                     fi
 
                     # ==== To recover from an error, you should restart the script ====
                     ## case "${zpool_dev_state}" in
                     ##     ONLINE)
-                    ##         # echo "255 255 255" > /sys/class/leds/$led/color
+                    ##         # echo "$COLOR_DISK_HEALTH" > /sys/class/leds/$led/color
                     ##         ;;
                     ##     *)
                     ##         echo "255 0 0" > /sys/class/leds/$led/color
@@ -232,14 +237,14 @@ if [ "$CHECK_SMART" = true ]; then
 (
     while true; do
         for led in "${!devices[@]}"; do
-            if [[ "$(cat /sys/class/leds/$led/color)" = "255 0 0" ]]; then
+            if [[ "$(cat /sys/class/leds/$led/color)" != "$COLOR_DISK_HEALTH" ]]; then
                 continue;
             fi
 
             dev=${devices[$led]}
 
             if [[ -z $(smartctl -H /dev/${dev} | grep PASSED) ]]; then
-                echo "255 0 0" > /sys/class/leds/$led/color
+                echo "$COLOR_SMART_FAIL" > /sys/class/leds/$led/color
                 echo Disk failure detected on /dev/$dev at $(date +%Y-%m-%d' '%H:%M:%S)
                 continue
             fi
@@ -256,12 +261,12 @@ fi
         for led in "${!devices[@]}"; do
             dev=${devices[$led]}
 
-            if [[ "$(cat /sys/class/leds/$led/color)" = "255 0 0" ]]; then
+            if [[ "$(cat /sys/class/leds/$led/color)" != "$COLOR_DISK_HEALTH" ]]; then
                 continue;
             fi
 
             if [[ ! -f /sys/class/block/${dev}/stat ]]; then
-                echo "255 0 0" > /sys/class/leds/$led/color 2>/dev/null
+                echo "$COLOR_DISK_UNAVAIL" > /sys/class/leds/$led/color 2>/dev/null
                 echo Disk /dev/$dev went offline at $(date +%Y-%m-%d' '%H:%M:%S)
                 continue
             fi
