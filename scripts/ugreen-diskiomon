@@ -7,6 +7,7 @@ exit-ugreen-diskiomon() {
   fi
   kill $smart_check_pid 2>/dev/null
   kill $zpool_check_pid 2>/dev/null
+  kill $disk_online_check_pid 2>/dev/null
 }
 
 # trap exit and remove lockfile
@@ -77,6 +78,9 @@ LED_REFRESH_INTERVAL=${LED_REFRESH_INTERVAL:=0.1}
 CHECK_ZPOOL=${CHECK_ZPOOL:=false}
 # polling rate for checking zpool health. 5 seconds by default
 CHECK_ZPOOL_INTERVAL=${CHECK_ZPOOL_INTERVAL:=5}
+
+# polling rate for checking disk online. 5 seconds by default
+CHECK_DISK_ONLINE_INTERVAL=${CHECK_DISK_ONLINE_INTERVAL:=5}
 
 
 { lsmod | grep ledtrig_oneshot > /dev/null; } || modprobe -v ledtrig_oneshot
@@ -227,26 +231,36 @@ if [ "$CHECK_SMART" = true ]; then
 smart_check_pid=$!
 fi
 
+# check disk online status
+(
+    while true; do
+        for led in "${!devices[@]}"; do
+            dev=${devices[$led]}
+
+            if [[ "$(cat /sys/class/leds/$led/color)" = "255 0 0" ]]; then
+                continue;
+            fi
+
+            if [[ ! -f /sys/class/block/${dev}/stat ]]; then
+                echo "255 0 0" > /sys/class/leds/$led/color 2>/dev/null
+                echo Disk /dev/$dev went offline at $(date +%Y-%m-%d' '%H:%M:%S)
+                continue
+            fi
+        done
+        sleep ${CHECK_DISK_ONLINE_INTERVAL}s
+    done
+) &
+disk_online_check_pid=$!
+
 # monitor disk activities
 declare -A diskio_data_rw
 while true; do
     for led in "${!devices[@]}"; do
-        dev=${devices[$led]}
-        diskio_old_rw="${diskio_data_rw[$led]}"
 
-        if [[ "$(cat /sys/class/leds/$led/color)" = "255 0 0" ]]; then
-            continue;
-        fi
+        # if $dev does not exist, diskio_new_rw="", which will be safe
+        diskio_new_rw="$(cat /sys/block/${devices[$led]}/stat 2>/dev/null)"
 
-        if [[ ! -f /sys/class/block/${dev}/stat ]]; then
-            echo "255 0 0" > /sys/class/leds/$led/color 2>/dev/null
-            echo Disk /dev/$dev went offline at $(date +%Y-%m-%d' '%H:%M:%S)
-            continue
-        fi
-
-        diskio_new_rw="$(cat /sys/block/${dev}/stat)"
-
-        if [ "${diskio_old_rw}" != "${diskio_new_rw}" ]; then
+        if [ "${diskio_data_rw[$led]}" != "${diskio_new_rw}" ]; then
             echo 1 > /sys/class/leds/$led/shot
         fi
 
