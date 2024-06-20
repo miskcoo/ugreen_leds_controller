@@ -4,10 +4,17 @@
 
 sleep 2
 
+# load environment variables
+if [[ -f /etc/ugreen-leds.conf ]]; then
+  source /etc/ugreen-leds.conf
+fi
+
 led="netdev"
 echo netdev > /sys/class/leds/$led/trigger
 echo $1 > /sys/class/leds/$led/device_name
 echo 1 > /sys/class/leds/$led/link
-echo 1 > /sys/class/leds/$led/tx
-echo 1 > /sys/class/leds/$led/rx
-echo 200 > /sys/class/leds/$led/interval
+echo ${NETDEV_BLINK_TX:=1} > /sys/class/leds/$led/tx
+echo ${NETDEV_BLINK_RX:=1} > /sys/class/leds/$led/rx
+echo ${NETDEV_BLINK_INTERVAL:=200} > /sys/class/leds/$led/interval
+
+
