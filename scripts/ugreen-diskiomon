@@ -214,13 +214,7 @@ if [ "$CHECK_SMART" = true ]; then
 smart_check_pid=$!
 fi
 
-# check for zpool-leds.sh and set variable
-if [[ -f /usr/bin/zpool-leds.sh ]]; then
-    ZPOOL_LEDS="bash /usr/bin/zpool-leds.sh"
-else
-    ZPOOL_LEDS=""
-fi
-
+# monitor disk activities
 declare -A diskio_data_rw
 while true; do
     for led in "${!devices[@]}"; do
@@ -245,8 +239,6 @@ while true; do
 
         diskio_data_rw[$led]=$diskio_new_rw
     done
-
-    ${ZPOOL_LEDS}
 
     sleep ${LED_REFRESH_INTERVAL}s
 
