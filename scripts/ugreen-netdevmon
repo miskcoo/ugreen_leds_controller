@@ -20,9 +20,7 @@ if [[ -f "/var/run/ugreen-netdevmon.lock" ]]; then
 fi
 touch /var/run/ugreen-netdevmon.lock
 
-{ lsmod | grep ledtrig_netdev > /dev/null; } || modprobe -v ledtrig_netdev
-
-sleep 2
+{ lsmod | grep ledtrig_netdev > /dev/null; } || { modprobe -v ledtrig_netdev && sleep 2; }
 
 # load environment variables
 if [[ -f /etc/ugreen-leds.conf ]]; then
@@ -60,6 +58,10 @@ function set_netdev_normal_color() {
 
     echo $color > /sys/class/leds/$led/color
 }
+
+if [[ $CHECK_GATEWAY_CONNECTIVITY == false && $CHECK_LINK_SPEED == false ]]; then
+    exit 0
+fi
 
 gw_conn=1
 
