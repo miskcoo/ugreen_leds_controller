@@ -24,41 +24,44 @@ if [[ -f /boot/config/plugins/ugreenleds-driver/settings.cfg ]]; then
 fi
 
 # led-disk mapping (see https://github.com/miskcoo/ugreen_dx4600_leds_controller/pull/4)
-MAPPING_METHOD=${MAPPING_METHOD:=hctl} # hctl, serial
+MAPPING_METHOD=${MAPPING_METHOD:=ata} # ata, hctl, serial
 led_map=(disk1 disk2 disk3 disk4 disk5 disk6 disk7 disk8)
 
 # hctl, $> lsblk -S -x hctl -o hctl,serial,name 
 # NOTE: It is reported that the order below should be adjusted for each model. 
 #       Please check the disk mapping section in https://github.com/miskcoo/ugreen_dx4600_leds_controller/blob/master/README.md.
 hctl_map=("0:0:0:0" "1:0:0:0" "2:0:0:0" "3:0:0:0" "4:0:0:0" "5:0:0:0" "6:0:0:0" "7:0:0:0")
+# serial number, $> lsblk -S -x hctl -o hctl,serial,name 
+serial_map=("placeholder0" "placeholder1" "placeholder2" "placeholder3" "placeholder4" "placeholder5" "placeholder6" "placeholder7")
+# ata number, $> ls /sys/block | egrep ata\d
+ata_map=("ata1" "ata2" "ata3" "ata4" "ata5" "ata6" "ata7" "ata8")
+
 if which dmidecode; then
     product_name=$(dmidecode --string system-product-name)
     case "${product_name}" in 
-        "DXP6800 Pro")
-          echo "Found UGREEN DXP6800 Pro" 
-          hctl_map=("2:0:0:0" "3:0:0:0" "4:0:0:0" "5:0:0:0" "0:0:0:0" "1:0:0:0")
-          ;;
-        "DX4600 Pro")
-          echo "Found UGREEN DX4600 Pro" 
-          # using the default mapping
-          ;;
-        "DXP8800 Plus")
-          echo "Found UGREEN DXP8800 Plus" 
-          # using the default mapping
-          ;;
+        DXP6800*)   # tested on DXP6800 Pro
+            echo "Found UGREEN DXP6800 series" 
+            hctl_map=("2:0:0:0" "3:0:0:0" "4:0:0:0" "5:0:0:0" "0:0:0:0" "1:0:0:0")
+            ata_map=("ata3" "ata4" "ata5" "ata6" "ata1" "ata2")
+            ;;
+        DX4600*)   # tested on DX4600 Pro
+            echo "Found UGREEN DX4600 series" 
+            ;;
+        DXP8800*)  # tested on DXP8800 Plus
+            echo "Found UGREEN DXP8800 series" 
+            # using the default mapping
+            ;;
         *)
-          if [[ "${MAPPING_METHOD}" = "hctl" ]]; then
-              echo "Using the default HCTL order. Please check it maps to your disk slots correctly."
-              echo "If you confirm that the HCTL order is correct, or find it is different, you can submit an issue to let us know, so we can update the script."
-              echo "(Read the disk mapping section in https://github.com/miskcoo/ugreen_dx4600_leds_controller/blob/master/README.md for more details)"
-          fi
-          ;;
+            if [[ "${MAPPING_METHOD}" = "hctl" ]]; then
+                echo "Using the default HCTL order. Please check it maps to your disk slots correctly."
+                echo "If you confirm that the HCTL order is correct, or find it is different, you can submit an issue to let us know, so we can update the script."
+                echo "(Read the disk mapping section in https://github.com/miskcoo/ugreen_dx4600_leds_controller/blob/master/README.md for more details)"
+            fi
+            ;;
     esac
 elif [[ "${MAPPING_METHOD}" = "hctl" ]]; then
     echo "installing the tool `dmidecode` is suggested; otherwise the script cannot detect your device and adjust the hctl_map"
 fi 
-# serial number, $> lsblk -S -x hctl -o hctl,serial,name 
-serial_map=("placeholder0" "placeholder1" "placeholder2" "placeholder3" "placeholder4" "placeholder5" "placeholder6" "placeholder7")
 declare -A devices
 
 # set monitor SMART information to true by default if not running unRAID
@@ -78,24 +81,35 @@ LED_REFRESH_INTERVAL=${LED_REFRESH_INTERVAL:=0.1}
 
 sleep 2
 
+function disk_enumerating_string() {
+    if [[ $MAPPING_METHOD = ata ]]; then
+        ls -ahl /sys/block | awk '{
+            if (match($0, /ata[0-9]+/)) {
+                ata = substr($0, RSTART, RLENGTH);
+                if (match($0, /[^\/]+$/)) {
+                    basename = substr($0, RSTART, RLENGTH);
+                }
+                print basename, ata;
+            }
+        }'
+    elif [[ $MAPPING_METHOD = hctl ]] || [[ $MAPPING_METHOD = serial ]]; then
+        lsblk -S -o name,${MAPPING_METHOD},tran | grep sata
+    else
+        echo Unsupported mapping method: ${MAPPING_METHOD}
+        exit 1
+    fi
+}
+
 echo Enumerating disks based on $MAPPING_METHOD...
 declare -A dev_map
 while read line
 do
     blk_line=($line)
-    if [[ $MAPPING_METHOD = hctl ]]; then
-        key=${blk_line[1]}
-        val=${blk_line[0]}
-    elif [[ $MAPPING_METHOD = serial ]]; then
-        key=${blk_line[1]}
-        val=${blk_line[0]}
-    else
-        echo Unsupported mapping method: ${MAPPING_METHOD}
-        exit 1
-    fi
+    key=${blk_line[1]}
+    val=${blk_line[0]}
     dev_map[${key}]=${val}
     echo $MAPPING_METHOD ${key} ">>" ${dev_map[${key}]}
-done <<< "$(lsblk -S -o name,${MAPPING_METHOD} | tail -n +2)"
+done <<< "$(disk_enumerating_string)"
 
 for i in "${!led_map[@]}"; do
     led=${led_map[i]} 
