@@ -76,7 +76,7 @@ LED_REFRESH_INTERVAL=${LED_REFRESH_INTERVAL:=0.1}
 # whether to check zpool health
 CHECK_ZPOOL=${CHECK_ZPOOL:=false}
 # polling rate for checking zpool health. 5 seconds by default
-CHECK_ZPOOL_INTERVAL=${CHECK_SMART_INTERVAL:=5}
+CHECK_ZPOOL_INTERVAL=${CHECK_ZPOOL_INTERVAL:=5}
 
 
 { lsmod | grep ledtrig_oneshot ; } || modprobe -v ledtrig_oneshot
