@@ -149,6 +149,8 @@ To blink the `disk` LED when a block device is active, you can use the `ledtrig-
 
 #### Start at Boot (for Debian 12)
 
+The configure file of `ugreen-diskiomon` and `ugreen-netdevmon` is `/etc/ugreen-led.conf`. Please see `scripts/ugreen-leds.conf` for an example.
+
 - Edit `/etc/modules-load.d/ugreen-led.conf` and add the following lines:
 ```
 i2c-dev
@@ -163,27 +165,36 @@ ledtrig-netdev
 
 - Copy files in the `scripts` directory: 
 ```bash
+# copy the scripts
 scripts=(ugreen-diskiomon ugreen-netdevmon ugreen-probe-leds)
 for f in ${scripts[@]}; do
     chmod +x "scripts/$f"
     cp "scripts/$f" /usr/bin
 done
 
+# copy the configuration file, you can change it if needed
+cp scripts/ugreen-leds.conf /etc/ugreen-leds.conf
+
+# copy the systemd services 
 cp scripts/*.service /etc/systemd/system/
 
 systemctl daemon-reload
 
 # change enp2s0 to the network device you want to monitor
-systemctl start ugreen-ledmon@enp2s0 
+systemctl start ugreen-netdevmon@enp2s0 
+systemctl start ugreen-diskiomon
 
 # if you confirm that everything works well, 
 # run the command below to make the service start at boot
-systemctl enable ugreen-ledmon@enp2s0 
+systemctl enable ugreen-netdevmon@enp2s0 
+systemctl enable ugreen-diskiomon
 ```
 
 ## Disk Mapping
 
-To make the disk LEDs useful, we should map the disk LEDs to correct disk slots. First of all, we should highlight that using `/dev/sdX` is never a smart idea, as it may change at every boot. In the script `ugreen-diskiomon` we provide two mapping methods: **by HCTL** and **by serial**. 
+To make the disk LEDs useful, we should map the disk LEDs to correct disk slots. First of all, we should highlight that using `/dev/sdX` is never a smart idea, as it may change at every boot. In the script `ugreen-diskiomon` we provide three mapping methods: **by ATA**, **by HCTL** and **by serial**. 
+
+The best mapping method is using serial numbers, but it needs to record them manually and fill the `DISK_SERIAL` array in `/etc/ugreen-leds.conf`. We use ATA mapping by default, and find that UGOS also do so. See the comments in `scripts/ugreen-leds.conf` for more details.
 
 The HCTL mapping depends on how the SATA controllers are connected to the PCIe bus and the disk slots. To check the HCTL order, you can run the following command, and check the serial of your disks:
 
