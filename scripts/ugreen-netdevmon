@@ -30,6 +30,8 @@ fi
 COLOR_NETDEV_NORMAL=${COLOR_NETDEV_NORMAL:="255 255 255"} 
 COLOR_NETDEV_GATEWAY_UNREACHABLE=${COLOR_NETDEV_GATEWAY_UNREACHABLE:="255 0 0"} 
 
+BRIGHTNESS_NETDEV_LED=${BRIGHTNESS_NETDEV_LED:="255"} 
+
 CHECK_NETDEV_INTERVAL=${CHECK_NETDEV_INTERVAL:=60} 
 CHECK_GATEWAY_CONNECTIVITY=${CHECK_GATEWAY_CONNECTIVITY:=false} 
 CHECK_LINK_SPEED=${CHECK_LINK_SPEED:=false} 
@@ -43,6 +45,7 @@ echo ${NETDEV_BLINK_TX:=1} > /sys/class/leds/$led/tx
 echo ${NETDEV_BLINK_RX:=1} > /sys/class/leds/$led/rx
 echo ${NETDEV_BLINK_INTERVAL:=200} > /sys/class/leds/$led/interval
 echo $COLOR_NETDEV_NORMAL > /sys/class/leds/$led/color
+echo $BRIGHTNESS_NETDEV_LED > /sys/class/leds/$led/brightness
 
 function set_netdev_normal_color() {
     color=$COLOR_NETDEV_NORMAL

@@ -97,6 +97,7 @@ COLOR_DISK_HEALTH=${COLOR_DISK_HEALTH:="255 255 255"}
 COLOR_DISK_UNAVAIL=${COLOR_DISK_UNAVAIL:="255 0 0"}
 COLOR_ZPOOL_FAIL=${COLOR_ZPOOL_FAIL:="255 0 0"}
 COLOR_SMART_FAIL=${COLOR_SMART_FAIL:="255 0 0"}
+BRIGHTNESS_DISK_LEDS=${BRIGHTNESS_DISK_LEDS:="255"}
 
 
 { lsmod | grep ledtrig_oneshot > /dev/null; } || { modprobe -v ledtrig_oneshot && sleep 2; }
@@ -141,6 +142,7 @@ for i in "${!led_map[@]}"; do
         echo 100 > /sys/class/leds/$led/delay_on
         echo 100 > /sys/class/leds/$led/delay_off
         echo "$COLOR_DISK_HEALTH" > /sys/class/leds/$led/color
+        echo "$BRIGHTNESS_DISK_LEDS" > /sys/class/leds/$led/brightness
 
         # find corresponding device
         _tmp_str=${MAPPING_METHOD}_map[@]
