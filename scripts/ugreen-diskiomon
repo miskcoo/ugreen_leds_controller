@@ -54,6 +54,9 @@ if which dmidecode; then
         DX4600*)   # tested on DX4600 Pro
             echo "Found UGREEN DX4600 series" 
             ;;
+        DXP4800*) 
+            echo "Found UGREEN DXP4800 series" 
+            ;;
         DXP8800*)  # tested on DXP8800 Plus
             echo "Found UGREEN DXP8800 series" 
             # using the default mapping
