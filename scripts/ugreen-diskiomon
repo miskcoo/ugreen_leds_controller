@@ -99,9 +99,7 @@ COLOR_ZPOOL_FAIL=${COLOR_ZPOOL_FAIL:="255 0 0"}
 COLOR_SMART_FAIL=${COLOR_SMART_FAIL:="255 0 0"}
 
 
-{ lsmod | grep ledtrig_oneshot > /dev/null; } || modprobe -v ledtrig_oneshot
-
-sleep 2
+{ lsmod | grep ledtrig_oneshot > /dev/null; } || { modprobe -v ledtrig_oneshot && sleep 2; }
 
 function disk_enumerating_string() {
     if [[ $MAPPING_METHOD == ata ]]; then
