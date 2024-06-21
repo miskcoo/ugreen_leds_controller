@@ -144,15 +144,18 @@ for i in "${!led_map[@]}"; do
         # find corresponding device
         _tmp_str=${MAPPING_METHOD}_map[@]
         _tmp_arr=(${!_tmp_str})
-        dev=${dev_map[${_tmp_arr[i]}]}
+        
+        if [[ -v "dev_map[${_tmp_arr[i]}]" ]]; then
+            dev=${dev_map[${_tmp_arr[i]}]}
 
-        if [[ -f /sys/class/block/${dev}/stat ]]; then
-            devices[$led]=${dev}
-            dev_to_led_map[$dev]=$led
-        else
-            # turn off the led if no disk installed on this slot
-            echo 0 > /sys/class/leds/$led/brightness
-            echo none > /sys/class/leds/$led/trigger
+            if [[ -f /sys/class/block/${dev}/stat ]]; then
+                devices[$led]=${dev}
+                dev_to_led_map[$dev]=$led
+            else
+                # turn off the led if no disk installed on this slot
+                echo 0 > /sys/class/leds/$led/brightness
+                echo none > /sys/class/leds/$led/trigger
+            fi
         fi
     fi
 done
