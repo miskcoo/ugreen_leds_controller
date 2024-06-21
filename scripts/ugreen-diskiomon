@@ -43,7 +43,7 @@ serial_map=(${DISK_SERIAL})
 # ata number, $> ls /sys/block | egrep ata\d
 ata_map=("ata1" "ata2" "ata3" "ata4" "ata5" "ata6" "ata7" "ata8")
 
-if which dmidecode; then
+if which dmidecode > /dev/null; then
     product_name=$(dmidecode --string system-product-name)
     case "${product_name}" in 
         DXP6800*)   # tested on DXP6800 Pro
@@ -62,15 +62,17 @@ if which dmidecode; then
             # using the default mapping
             ;;
         *)
-            if [[ "${MAPPING_METHOD}" = "hctl" ]]; then
-                echo "Using the default HCTL order. Please check it maps to your disk slots correctly."
-                echo "If you confirm that the HCTL order is correct, or find it is different, you can submit an issue to let us know, so we can update the script."
-                echo "(Read the disk mapping section in https://github.com/miskcoo/ugreen_dx4600_leds_controller/blob/master/README.md for more details)"
+            if [[ "${MAPPING_METHOD}" == "hctl" || "${MAPPING_METHOD}" == "ata" ]]; then
+                echo -e "\033[0;31mUsing the default HCTL order. Please check it maps to your disk slots correctly."
+                echo -e "If you confirm that the HCTL order is correct, or find it is different, you can "
+                echo -e "submit an issue to let us know, so we can update the script."
+                echo -e "Please read the disk mapping section in the link below for more details. "
+                echo -e "   https://github.com/miskcoo/ugreen_dx4600_leds_controller/blob/master/README.md\033[0m"
             fi
             ;;
     esac
-elif [[ "${MAPPING_METHOD}" = "hctl" ]]; then
-    echo "installing the tool `dmidecode` is suggested; otherwise the script cannot detect your device and adjust the hctl_map"
+elif [[ "${MAPPING_METHOD}" == "hctl" || "${MAPPING_METHOD}" == "ata" ]]; then
+    echo -e "\033[0;31minstalling the tool `dmidecode` is suggested; otherwise the script cannot detect your device and adjust the hctl/ata_map\033[0m"
 fi 
 declare -A devices
 
