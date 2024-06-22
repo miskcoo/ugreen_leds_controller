@@ -5,9 +5,6 @@ exit-ugreen-netdevmon() {
   if [[ -f "/var/run/ugreen-netdevmon.lock" ]]; then
     rm "/var/run/ugreen-netdevmon.lock"
   fi
-  kill $smart_check_pid 2>/dev/null
-  kill $zpool_check_pid 2>/dev/null
-  kill $disk_online_check_pid 2>/dev/null
 }
 
 # trap exit and remove lockfile
