@@ -5,7 +5,7 @@ UGREEN's DX4600 Pro is a four-bay NAS with a built-in system based on OpenWRT ca
 
 This repository describes the control logic of UGOS for these LED lights and provides a command-line tool and a kernel module to control them. For the process of understanding this control logic, please refer to [my blog (in Chinese)](https://blog.miskcoo.com/2024/05/ugreen-dx4600-pro-led-controller).
 
-**WARNING:** Only tested on the following devices. I guess that it works for all DX4600 series. For other devices, please follow the [Preparation](#Preparation) section to check if the protocol is compatible, and run `./ugreen_leds_cli all` to see which LEDs are supported by this tool.
+**WARNING:** Only tested on the following devices. For other devices, please follow the [Preparation](#Preparation) section to check if the protocol is compatible, and run `./ugreen_leds_cli all` to see which LEDs are supported by this tool.
 
 - [x] UGREEN DX4600 Pro
 - [x] UGREEN DXP4800 Plus (reported [here](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8))
@@ -14,6 +14,14 @@ This repository describes the control logic of UGOS for these LED lights and pro
 - [ ] UGREEN DXP480T Plus (**NO**, but the protocol has been understood, see [#6](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/6#issuecomment-2156807225))
 
 **I am not sure whether this is compatible with other devices. If you have tested it in other devices, please feel free to update the list above.**
+
+For third-party systems, I am using Debian 12, but you can find some manuals for other systems:
+
+- DSM: see [#8](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/8)
+- TrueNAS: see [#13](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/13) (and maybe [here](https://github.com/miskcoo/ugreen_dx4600_leds_controller/tree/truenas-build/build-scripts/truenas)) for how to build the module, and [here](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8) for a script using the cli tool
+- unRAID: there will be a [plugin](https://forums.unraid.net/topic/168423-ugreen-nas-led-control/); see [#10](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/10)
+- Proxmox: you need to use the cli tool in Proxmox, not in a VM
+- Debian: see [the section below](https://github.com/miskcoo/ugreen_dx4600_leds_controller?tab=readme-ov-file#start-at-boot-for-debian-12)
 
 Below is an example:
 
