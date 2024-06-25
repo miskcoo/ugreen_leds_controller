@@ -80,15 +80,15 @@ function disk_enumerating_string() {
 
 function set_netdev_color() {
   case $(cat /sys/class/net/${1}/speed) in
-    100) color=${COLOR_NETDEV_LINK_100};;
-    1000) color=${COLOR_NETDEV_LINK_1000};;
-    2500) color=${COLOR_NETDEV_LINK_2500};;
-    10000) color=${COLOR_NETDEV_LINK_10000};;
+    100) color="${COLOR_NETDEV_LINK_100}";;
+    1000) color="${COLOR_NETDEV_LINK_1000}";;
+    2500) color="${COLOR_NETDEV_LINK_2500}";;
+    10000) color="${COLOR_NETDEV_LINK_10000}";;
   esac
-  if [ -z $color ]; then
-    color=$COLOR_NETDEV_NORMAL
+  if [ -z ${color} ]; then
+    color="${COLOR_NETDEV_NORMAL}"
   fi
-  echo $color > /sys/class/leds/netdev/color
+  echo "$color" > /sys/class/leds/netdev/color
 }
 
 logger "ugreen-leds: Enumerating disks based on $MAPPING_METHOD..."
@@ -185,4 +185,3 @@ while true; do
   done
   sleep ${LED_REFRESH_INTERVAL}s
 done
-
