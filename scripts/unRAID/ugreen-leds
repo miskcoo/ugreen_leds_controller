@@ -1,0 +1,188 @@
+#!/bin/bash
+# function for removing lockfile
+exit-ugreen-leds() {
+  if [[ -f "/var/run/ugreen-leds.lock" ]]; then
+    rm -f "/var/run/ugreen-leds.lock"
+  fi
+  kill $smart_check_pid 2>/dev/null
+  kill $netdev_check_pid 2>/dev/null
+  kill $zpool_check_pid 2>/dev/null
+  kill $disk_online_check_pid 2>/dev/null
+}
+
+# trap exit and remove lockfile
+trap 'exit-ugreen-leds' EXIT
+
+# check if script is already running
+if [[ -f "/var/run/ugreen-leds.lock" ]]; then
+  echo "ugreen-leds already running!"
+  logger "ugreen-leds: ugreen-leds already running!"
+  exit 1
+fi
+touch /var/run/ugreen-leds.lock
+
+# use variables from config file (unRAID specific)
+source /boot/config/plugins/ugreenleds-driver/settings.cfg
+
+# hctl, $> lsblk -S -x hctl -o hctl,serial,name 
+# NOTE: It is reported that the order below should be adjusted for each model. 
+#     Please check the disk mapping section in https://github.com/miskcoo/ugreen_dx4600_leds_controller/blob/master/README.md.
+hctl_map=("0:0:0:0" "1:0:0:0" "2:0:0:0" "3:0:0:0" "4:0:0:0" "5:0:0:0" "6:0:0:0" "7:0:0:0")
+# serial number, $> lsblk -S -x hctl -o hctl,serial,name 
+serial_map=(${DISK_SERIAL})
+# ata number, $> ls /sys/block | egrep ata\d
+ata_map=("ata1" "ata2" "ata3" "ata4" "ata5" "ata6" "ata7" "ata8")
+
+product_name=$(dmidecode --string system-product-name)
+case "${product_name}" in 
+  DXP6800*)   # tested on DXP6800 Pro
+    logger "ugreen-leds: Found UGREEN DXP6800 series" 
+    hctl_map=("2:0:0:0" "3:0:0:0" "4:0:0:0" "5:0:0:0" "0:0:0:0" "1:0:0:0")
+    ata_map=("ata3" "ata4" "ata5" "ata6" "ata1" "ata2")
+    ;;
+  DX4600*)   # tested on DX4600 Pro
+    logger "ugreen-leds: Found UGREEN DX4600 series" 
+    ;;
+  DXP4800*) 
+    logger "ugreen-leds: UGREEN DXP4800 series" 
+    ;;
+  DXP8800*)  # tested on DXP8800 Plus
+    logger "ugreen-leds: UGREEN DXP8800 series" 
+    # using the default mapping
+    ;;
+  *)
+    if [[ "${MAPPING_METHOD}" == "hctl" || "${MAPPING_METHOD}" == "ata" ]]; then
+      logger "ugreen-leds: no supported UGREEN NAS found!"
+    fi
+    exit 1
+    ;;
+esac
+declare -A devices
+
+function disk_enumerating_string() {
+  if [[ $MAPPING_METHOD == ata ]]; then
+    ls -ahl /sys/block | sed 's/\/$//' | awk '{
+      if (match($0, /ata[0-9]+/)) {
+        ata = substr($0, RSTART, RLENGTH);
+        if (match($0, /[^\/]+$/)) {
+          basename = substr($0, RSTART, RLENGTH);
+          print basename, ata;
+        }
+      }
+    }'
+  elif [[ $MAPPING_METHOD == hctl || $MAPPING_METHOD == serial ]]; then
+    lsblk -S -o name,${MAPPING_METHOD},tran | grep sata
+  else
+    logger "ugreen-leds: Unsupported mapping method: ${MAPPING_METHOD}"
+    exit 1
+  fi
+}
+
+function set_netdev_color() {
+  case $(cat /sys/class/net/${1}/speed) in
+    100) color=${COLOR_NETDEV_LINK_100};;
+    1000) color=${COLOR_NETDEV_LINK_1000};;
+    2500) color=${COLOR_NETDEV_LINK_2500};;
+    10000) color=${COLOR_NETDEV_LINK_10000};;
+  esac
+  if [ -z $color ]; then
+    color=$COLOR_NETDEV_NORMAL
+  fi
+  echo $color > /sys/class/leds/netdev/color
+}
+
+logger "ugreen-leds: Enumerating disks based on $MAPPING_METHOD..."
+declare -A dev_map
+while read line
+do
+  blk_line=($line)
+  key=${blk_line[1]}
+  val=${blk_line[0]}
+  dev_map[${key}]=${val}
+  logger "ugreen-leds: $MAPPING_METHOD ${key} to ${dev_map[${key}]}"
+done <<< "$(disk_enumerating_string)"
+
+# initialize LEDs
+declare -A dev_to_led_map
+for i in "${!led_map[@]}"; do
+  led=${led_map[i]} 
+  if [[ -d /sys/class/leds/$led ]]; then
+    echo oneshot > /sys/class/leds/$led/trigger
+    echo 1 > /sys/class/leds/$led/invert
+    echo 100 > /sys/class/leds/$led/delay_on
+    echo 100 > /sys/class/leds/$led/delay_off
+    echo "$COLOR_DISK_HEALTH" > /sys/class/leds/$led/color
+    echo "$BRIGHTNESS_DISK_LEDS" > /sys/class/leds/$led/brightness
+    # find corresponding device
+    _tmp_str=${MAPPING_METHOD}_map[@]
+    _tmp_arr=(${!_tmp_str})
+    
+    if [[ -v "dev_map[${_tmp_arr[i]}]" ]]; then
+      dev=${dev_map[${_tmp_arr[i]}]}
+
+      if [[ -f /sys/class/block/${dev}/stat ]]; then
+        devices[$led]=${dev}
+        dev_to_led_map[$dev]=$led
+      else
+        # turn off the led if no disk installed on this slot
+        echo 0 > /sys/class/leds/$led/brightness
+        echo none > /sys/class/leds/$led/trigger
+      fi
+    fi
+  fi
+done
+
+# check gw connection
+if [ "$CHECK_GATEWAY_CONNECTIVITY" == "true" ]; then
+  INTERFACE="$(cat /boot/config/network.cfg | grep "IFNAME\[0\]" | cut -d '=' -f2 | sed 's/\"//g' | head -1 | tr -d '[:space:]')"
+  if [[ $INTERFACE =~ ^br ]]; then
+    INTERFACE="$(ip -o link show master $INTERFACE | awk '{print $2}' | sed 's/://' | grep -o 'eth[0-9]\+' | head -1 | tr -d '[:space:]')"
+  fi
+(
+  while true; do
+    gw=$(ip route | awk '/default/ { print $3 }')
+    if ping -q -c 1 -W 1 $gw >/dev/null; then
+      set_netdev_color ${INTERFACE}
+    else
+      echo $COLOR_NETDEV_GATEWAY_UNREACHABLE > /sys/class/leds/netdev/color
+    fi
+    sleep ${CHECK_NETDEV_INTERVAL}s
+  done
+) &
+netdev_check_pid=$!
+fi
+
+# check disk online status
+(
+  while true; do
+    for led in "${!devices[@]}"; do
+      dev=${devices[$led]}
+      if [[ "$(cat /sys/class/leds/$led/color)" != "$COLOR_DISK_HEALTH" ]]; then
+        continue;
+      fi
+
+      if [[ ! -f /sys/class/block/${dev}/stat ]]; then
+        echo "$COLOR_DISK_UNAVAIL" > /sys/class/leds/$led/color 2>/dev/null
+        logger "ugreen-leds: Disk /dev/$dev went offline at $(date +%Y-%m-%d' '%H:%M:%S)"
+        continue
+      fi
+    done
+    sleep ${CHECK_DISK_ONLINE_INTERVAL}s
+  done
+) &
+disk_online_check_pid=$!
+
+# monitor disk activities
+declare -A diskio_data_rw
+while true; do
+  for led in "${!devices[@]}"; do
+    # if $dev does not exist, diskio_new_rw="", which will be safe
+    diskio_new_rw="$(cat /sys/block/${devices[$led]}/stat 2>/dev/null)"
+    if [ "${diskio_data_rw[$led]}" != "${diskio_new_rw}" ]; then
+      echo 1 > /sys/class/leds/$led/shot
+    fi
+    diskio_data_rw[$led]=$diskio_new_rw
+  done
+  sleep ${LED_REFRESH_INTERVAL}s
+done
+
