@@ -85,7 +85,7 @@ function set_netdev_color() {
     2500) color="${COLOR_NETDEV_LINK_2500}";;
     10000) color="${COLOR_NETDEV_LINK_10000}";;
   esac
-  if [ -z ${color} ]; then
+  if [ -z "${color}" ]; then
     color="${COLOR_NETDEV_NORMAL}"
   fi
   echo "$color" > /sys/class/leds/netdev/color
