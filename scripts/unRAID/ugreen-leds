@@ -95,6 +95,11 @@ case "${product_name}" in
     default_modules
     default_netdevmon
     ;;
+  DXP2800*) 
+    logger "ugreen-leds: Info: UGREEN DXP2800 series"
+    default_modules
+    default_netdevmon
+    ;;
   DXP4800*) 
     logger "ugreen-leds: Info: UGREEN DXP4800 series"
     default_modules
