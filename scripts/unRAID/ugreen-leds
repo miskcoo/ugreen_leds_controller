@@ -88,7 +88,7 @@ case "${product_name}" in
     hctl_map=("2:0:0:0" "3:0:0:0" "4:0:0:0" "5:0:0:0" "0:0:0:0" "1:0:0:0")
     ata_map=("ata3" "ata4" "ata5" "ata6" "ata1" "ata2")
     default_modules
-    load_netdevmon
+    default_netdevmon
     ;;
   DX4600*)   # tested on DX4600 Pro
     logger "ugreen-leds: Info: Found UGREEN DX4600 series"
