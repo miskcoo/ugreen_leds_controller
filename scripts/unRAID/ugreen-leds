@@ -202,7 +202,7 @@ done
 if [ "$CHECK_GATEWAY_CONNECTIVITY" == "true" ]; then
 (
   while true; do
-    gw=$(ip route | awk '/default/ { print $3 }')
+    gw=$(ip route | awk '/default/ { print $3 }' | head -1)
     if ping -q -c 1 -W 1 $gw >/dev/null; then
       set_netdev_color ${INTERFACE}
     else
