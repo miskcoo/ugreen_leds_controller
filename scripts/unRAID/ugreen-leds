@@ -6,7 +6,6 @@ exit-ugreen-leds() {
   fi
   kill $smart_check_pid 2>/dev/null
   kill $netdev_check_pid 2>/dev/null
-  kill $zpool_check_pid 2>/dev/null
   kill $disk_online_check_pid 2>/dev/null
 }
 
@@ -15,8 +14,8 @@ trap 'exit-ugreen-leds' EXIT
 
 # check if script is already running
 if [[ -f "/var/run/ugreen-leds.lock" ]]; then
-  echo "ugreen-leds already running!"
-  logger "ugreen-leds: ugreen-leds already running!"
+  echo "ugreen-leds: already running!"
+  logger "ugreen-leds: Error: ugreen-leds already running!"
   exit 1
 fi
 touch /var/run/ugreen-leds.lock
@@ -32,27 +31,90 @@ hctl_map=("0:0:0:0" "1:0:0:0" "2:0:0:0" "3:0:0:0" "4:0:0:0" "5:0:0:0" "6:0:0:0" 
 serial_map=(${DISK_SERIAL})
 # ata number, $> ls /sys/block | egrep ata\d
 ata_map=("ata1" "ata2" "ata3" "ata4" "ata5" "ata6" "ata7" "ata8")
+# create led map
+led_map=(disk1 disk2 disk3 disk4 disk5 disk6 disk7 disk8)
+
+# get default unRAID network interface
+INTERFACE="$(cat /boot/config/network.cfg | grep "IFNAME\[0\]" | cut -d '=' -f2 | sed 's/\"//g' | head -1 | tr -d '[:space:]')"
+if [ -z "${INTERFACE}" ]; then
+  INTERFACES="$(ls /sys/class/net | grep -E '^eth[0-9]+|^bond[0-9]+|^br[0-9]+' | sed 's/@$//')"
+  if [[ $INTERFACES =~ ^bond ]]; then
+    INTERFACE="$(echo "$INTERFACES" | grep "bond" | head -1 | tr -d '[:space:]')"
+  elif [[ $INTERFACES =~ ^br ]]; then
+    INTERFACE="$(echo "$INTERFACES" | grep "br" | head -1 | tr -d '[:space:]')"
+  elif [[ $INTERFACES =~ ^eth ]]; then
+    INTERFACE="$(echo "$INTERFACES" | grep "eth" | head -1 | tr -d '[:space:]')"
+  fi
+fi
+
+# define functions
+default_modules() {
+  /sbin/modprobe i2c-dev
+  /sbin/modprobe led-ugreen
+  sleep 1
+  I2C_DEV=$(i2cdetect -l | grep "SMBus I801 adapter" | grep -Po "i2c-\d+")
+  echo "led-ugreen 0x3a" > /sys/bus/i2c/devices/${I2C_DEV}/new_device 2>/dev/null
+  /sbin/modprobe ledtrig-oneshot
+  /sbin/modprobe ledtrig-netdev
+  sleep 2
+}
+
+default_netdevmon() {
+  echo netdev > /sys/class/leds/netdev/trigger
+  echo ${INTERFACE} > /sys/class/leds/netdev/device_name
+  echo 1 > /sys/class/leds/netdev/link
+  echo 1 > /sys/class/leds/netdev/tx
+  echo 1 > /sys/class/leds/netdev/rx
+  echo 200 > /sys/class/leds/netdev/interval
+}
+
+dxp480t_static() {
+  /sbin/modprobe i2c-dev
+  sleep 1
+  I2C_DEV=$(i2cdetect -l | grep "SMBus I801 adapter" | grep -Po "i2c-\d+" | cut -d '-' -f2)
+
+  ## Set status led to static white
+  i2cset -y ${I2C_DEV} 0x26 0xa0 1 b # red off
+  i2cset -y ${I2C_DEV} 0x26 0xa0 2 b # white off
+  i2cset -y ${I2C_DEV} 0x26 0xb1 2 b # white on
+  i2cset -y ${I2C_DEV} 0x26 0x51 0 b # Slow Flash off
+  i2cset -y ${I2C_DEV} 0x26 0x50 0 b # Permanently on
+}
 
 product_name=$(dmidecode --string system-product-name)
 case "${product_name}" in 
   DXP6800*)   # tested on DXP6800 Pro
-    logger "ugreen-leds: Found UGREEN DXP6800 series" 
+    logger "ugreen-leds: Info: Found UGREEN DXP6800 series" 
     hctl_map=("2:0:0:0" "3:0:0:0" "4:0:0:0" "5:0:0:0" "0:0:0:0" "1:0:0:0")
     ata_map=("ata3" "ata4" "ata5" "ata6" "ata1" "ata2")
+    default_modules
+    load_netdevmon
     ;;
   DX4600*)   # tested on DX4600 Pro
-    logger "ugreen-leds: Found UGREEN DX4600 series" 
+    logger "ugreen-leds: Info: Found UGREEN DX4600 series"
+    default_modules
+    default_netdevmon
     ;;
   DXP4800*) 
-    logger "ugreen-leds: UGREEN DXP4800 series" 
+    logger "ugreen-leds: Info: UGREEN DXP4800 series"
+    default_modules
+    default_netdevmon
     ;;
   DXP8800*)  # tested on DXP8800 Plus
-    logger "ugreen-leds: UGREEN DXP8800 series" 
+    logger "ugreen-leds: Info: UGREEN DXP8800 series"
+    default_modules
+    default_netdevmon
     # using the default mapping
+    ;;
+  DXP480T*)  # tested on DXP480T Plus
+    logger "ugreen-leds: Info: UGREEN DXP480T series"
+    dxp480t_static
+    # set led to static white and exit
+    exit 0
     ;;
   *)
     if [[ "${MAPPING_METHOD}" == "hctl" || "${MAPPING_METHOD}" == "ata" ]]; then
-      logger "ugreen-leds: no supported UGREEN NAS found!"
+      logger "ugreen-leds: Error: no supported UGREEN NAS found!"
     fi
     exit 1
     ;;
@@ -73,7 +135,7 @@ function disk_enumerating_string() {
   elif [[ $MAPPING_METHOD == hctl || $MAPPING_METHOD == serial ]]; then
     lsblk -S -o name,${MAPPING_METHOD},tran | grep sata
   else
-    logger "ugreen-leds: Unsupported mapping method: ${MAPPING_METHOD}"
+    logger "ugreen-leds: Error: Unsupported mapping method: ${MAPPING_METHOD}"
     exit 1
   fi
 }
@@ -91,7 +153,7 @@ function set_netdev_color() {
   echo "$color" > /sys/class/leds/netdev/color
 }
 
-logger "ugreen-leds: Enumerating disks based on $MAPPING_METHOD..."
+logger "ugreen-leds: Info: Enumerating disks based on $MAPPING_METHOD..."
 declare -A dev_map
 while read line
 do
@@ -99,7 +161,7 @@ do
   key=${blk_line[1]}
   val=${blk_line[0]}
   dev_map[${key}]=${val}
-  logger "ugreen-leds: $MAPPING_METHOD ${key} to ${dev_map[${key}]}"
+  logger "ugreen-leds: Info: mapping $MAPPING_METHOD ${key} to ${dev_map[${key}]}"
 done <<< "$(disk_enumerating_string)"
 
 # initialize LEDs
@@ -134,10 +196,6 @@ done
 
 # check gw connection
 if [ "$CHECK_GATEWAY_CONNECTIVITY" == "true" ]; then
-  INTERFACE="$(cat /boot/config/network.cfg | grep "IFNAME\[0\]" | cut -d '=' -f2 | sed 's/\"//g' | head -1 | tr -d '[:space:]')"
-  if [[ $INTERFACE =~ ^br ]]; then
-    INTERFACE="$(ip -o link show master $INTERFACE | awk '{print $2}' | sed 's/://' | grep -o 'eth[0-9]\+' | head -1 | tr -d '[:space:]')"
-  fi
 (
   while true; do
     gw=$(ip route | awk '/default/ { print $3 }')
@@ -163,7 +221,7 @@ fi
 
       if [[ ! -f /sys/class/block/${dev}/stat ]]; then
         echo "$COLOR_DISK_UNAVAIL" > /sys/class/leds/$led/color 2>/dev/null
-        logger "ugreen-leds: Disk /dev/$dev went offline at $(date +%Y-%m-%d' '%H:%M:%S)"
+        logger "ugreen-leds: Error: Disk /dev/$dev went offline at $(date +%Y-%m-%d' '%H:%M:%S)"
         continue
       fi
     done
