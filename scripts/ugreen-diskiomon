@@ -161,6 +161,10 @@ for i in "${!led_map[@]}"; do
                 echo 0 > /sys/class/leds/$led/brightness
                 echo none > /sys/class/leds/$led/trigger
             fi
+        else
+            # turn off the led if no disk installed on this slot
+            echo 0 > /sys/class/leds/$led/brightness
+            echo none > /sys/class/leds/$led/trigger
         fi
     fi
 done
