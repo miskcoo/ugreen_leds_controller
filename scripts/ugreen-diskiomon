@@ -54,6 +54,9 @@ if which dmidecode > /dev/null; then
         DX4600*)   # tested on DX4600 Pro
             echo "Found UGREEN DX4600 series" 
             ;;
+        DX4700*) 
+            echo "Found UGREEN DX4700 series" 
+            ;;
         DXP2800*)   # see issue #19
             echo "Found UGREEN DXP2800 series" 
             ;;
