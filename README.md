@@ -8,6 +8,7 @@ This repository describes the control logic of UGOS for these LED lights and pro
 **WARNING:** Only tested on the following devices. For other devices, please follow the [Preparation](#Preparation) section to check if the protocol is compatible, and run `./ugreen_leds_cli all` to see which LEDs are supported by this tool.
 
 - [x] UGREEN DX4600 Pro
+- [x] UGREEN DX4700+
 - [x] UGREEN DXP2800 (reported in [#19](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/19))
 - [x] UGREEN DXP4800 Plus (reported [here](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8))
 - [x] UGREEN DXP6800 Pro (reported in [#7](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/7))
