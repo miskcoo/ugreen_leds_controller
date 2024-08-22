@@ -8,3 +8,5 @@ for version in ${truenas_versions}; do
         bash build.sh "$version"
     fi
 done
+
+find -name *.ko
