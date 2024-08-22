@@ -11,15 +11,15 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Build the kernel modules
       working-directory: build-scripts/truenas
       run: bash build-all.sh
 
-      # - name: Push results to GitHub
-      #   uses: stefanzweifel/git-auto-commit-action@v4
-      #   with:
-      #     commit_message: "Add output from script"
-      #     branch: main
-      #     file_pattern: output.txt
+    - name: Push results to GitHub
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "Add compiled modules"
+        branch: gh-actions
+        file_pattern: *.ko
