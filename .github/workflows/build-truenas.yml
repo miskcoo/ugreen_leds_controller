@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - gh-actions
+  
+  schedule:
+    - cron: "0 0 * * *" 
 
 jobs:
   build-and-run:
