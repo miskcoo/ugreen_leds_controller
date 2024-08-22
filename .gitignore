@@ -4,7 +4,6 @@ ugreen_leds_cli
 run.sh
 zpool_leds.sh
 
-*.ko
 *.mod.c
 *.o
 *.cmd
