@@ -1,0 +1,25 @@
+name: Build kernel module for TrueNAS
+
+on:
+  push:
+    branches:
+      - gh-actions
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Build the kernel modules
+      working-directory: build-scripts/truenas
+      run: bash build-all.sh
+
+      # - name: Push results to GitHub
+      #   uses: stefanzweifel/git-auto-commit-action@v4
+      #   with:
+      #     commit_message: "Add output from script"
+      #     branch: main
+      #     file_pattern: output.txt
