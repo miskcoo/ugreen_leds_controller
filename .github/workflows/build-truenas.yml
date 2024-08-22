@@ -22,4 +22,4 @@ jobs:
       with:
         commit_message: "Add compiled modules"
         branch: gh-actions
-        file_pattern: *.ko
+        file_pattern: '*.ko'
