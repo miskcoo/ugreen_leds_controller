@@ -1,3 +1,4 @@
+set -x
 
 
 url_prefix="https://download.truenas.com/$1/packages/"

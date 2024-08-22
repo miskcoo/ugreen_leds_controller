@@ -1,3 +1,4 @@
+set -x
 
 if [[ ! -d ./build ]]; then
     mkdir build
