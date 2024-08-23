@@ -1,0 +1,34 @@
+name: Build kernel module for TrueNAS
+
+on:
+  push:
+    branches:
+      - gh-actions
+  
+  schedule:
+    - cron: "0 0 * * *" 
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Give the default GITHUB_TOKEN write permission to commit and push the changed files back to the repository.
+      contents: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: gh-actions
+
+    - name: Build the kernel modules
+      working-directory: build-scripts/truenas
+      run: bash build-all.sh
+
+    - name: Push results to GitHub
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "Add compiled modules"
+        branch: gh-actions
+        file_pattern: 'build-scripts/truenas/build/*/*/led-ugreen.ko'
