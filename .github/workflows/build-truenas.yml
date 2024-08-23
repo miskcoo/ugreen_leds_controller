@@ -19,6 +19,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        ref: gh-actions
 
     - name: Build the kernel modules
       working-directory: build-scripts/truenas
