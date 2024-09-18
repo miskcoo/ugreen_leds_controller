@@ -1,5 +1,7 @@
 [Unit]
 Description=UGREEN LEDs daemon for monitoring netio (of %i) and blinking corresponding LEDs
+After=systemd-modules-load.service
+Requires=systemd-modules-load.service
 
 [Service]
 ExecStartPre=/usr/bin/ugreen-probe-leds
