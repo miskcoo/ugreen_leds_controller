@@ -6,7 +6,12 @@ url_prefix="https://download.truenas.com/$1/packages/"
 mkdir truenas_working
 cd truenas_working
 
-wget "${url_prefix}Packages.gz"
+if ! wget "${url_prefix}Packages.gz"; then
+    cd ..
+    rm -rf truenas_working 
+    exit 0
+fi
+
 gzip -d Packages.gz
 deb_name=$(grep linux-headers-truenas-production Packages | grep -Po "(?<=Filename: ./).*deb")
 wget "${url_prefix}${deb_name}"
