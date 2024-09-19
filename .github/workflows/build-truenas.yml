@@ -3,7 +3,7 @@ name: Build kernel module for TrueNAS
 on:
   push:
     branches:
-      - gh-actions
+      - master
   
   schedule:
     - cron: "0 0 * * *" 
