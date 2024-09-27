@@ -188,6 +188,7 @@ int main(int argc, char *argv[])
             args.pop_front();
         } else if(args.front() == "-blink" || args.front() == "-breath") {
             // set blink
+            bool is_blink = (args.front() == "-blink");
             args.pop_front();
 
             if (args.size() < 2) {
@@ -200,7 +201,6 @@ int main(int argc, char *argv[])
             uint16_t t_off = parse_integer(args.front(), 0x0000, 0xffff);
             args.pop_front();
 
-            bool is_blink = (args.front() == "-blink");
             ops_seq.emplace_back(true, [=, &leds_controller](led_type_pair led) {
                 if (is_blink) {
                     return leds_controller.set_blink(led.second, t_on, t_off);
