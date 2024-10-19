@@ -9,21 +9,21 @@ This repository describes the control logic of UGOS for these LED lights and pro
 
 - [x] UGREEN DX4600 Pro
 - [x] UGREEN DX4700+
-- [x] UGREEN DXP2800 (reported in [#19](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/19))
+- [x] UGREEN DXP2800 (reported in [#19](https://github.com/miskcoo/ugreen_leds_controller/issues/19))
 - [x] UGREEN DXP4800 Plus (reported [here](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8))
-- [x] UGREEN DXP6800 Pro (reported in [#7](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/7))
-- [x] UGREEN DXP8800 Plus (see [this repo](https://github.com/meyergru/ugreen_dxp8800_leds_controller) and [#1](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/1))
-- [ ] UGREEN DXP480T Plus (**NO**, but the protocol has been understood, see [#6](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/6#issuecomment-2156807225))
+- [x] UGREEN DXP6800 Pro (reported in [#7](https://github.com/miskcoo/ugreen_leds_controller/issues/7))
+- [x] UGREEN DXP8800 Plus (see [this repo](https://github.com/meyergru/ugreen_dxp8800_leds_controller) and [#1](https://github.com/miskcoo/ugreen_leds_controller/issues/1))
+- [ ] UGREEN DXP480T Plus (**NO**, but the protocol has been understood, see [#6](https://github.com/miskcoo/ugreen_leds_controller/issues/6#issuecomment-2156807225))
 
 **I am not sure whether this is compatible with other devices. If you have tested it in other devices, please feel free to update the list above.**
 
 For third-party systems, I am using Debian 12, but you can find some manuals for other systems:
 
-- DSM: see [#8](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/8)
-- TrueNAS: see [#13](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/13) (and maybe [here](https://github.com/miskcoo/ugreen_dx4600_leds_controller/tree/truenas-build/build-scripts/truenas)) for how to build the module, and [here](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8) for a script using the cli tool; [here](https://github.com/miskcoo/ugreen_dx4600_leds_controller/tree/gh-actions/build-scripts/truenas/build) for pre-build drivers 
+- DSM: see [#8](https://github.com/miskcoo/ugreen_leds_controller/issues/8)
+- TrueNAS: see [#13](https://github.com/miskcoo/ugreen_leds_controller/issues/13) (and maybe [here](https://github.com/miskcoo/ugreen_leds_controller/tree/truenas-build/build-scripts/truenas)) for how to build the module, and [here](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8) for a script using the cli tool; [here](https://github.com/miskcoo/ugreen_leds_controller/tree/gh-actions/build-scripts/truenas/build) for pre-build drivers 
 - unRAID: there is a [plugin](https://forums.unraid.net/topic/168423-ugreen-nas-led-control/); see also [this repo](https://github.com/ich777/unraid-ugreenleds-driver/tree/master/source/usr/bin)
 - Proxmox: you need to use the cli tool in Proxmox, not in a VM
-- Debian: see [the section below](https://github.com/miskcoo/ugreen_dx4600_leds_controller#start-at-boot-for-debian-12)
+- Debian: see [the section below](https://github.com/miskcoo/ugreen_leds_controller#start-at-boot-for-debian-12)
 
 Below is an example:
 
@@ -130,7 +130,7 @@ There are three methods to install the module:
   dkms build -m led-ugreen -v 0.1 && dkms install -m led-ugreen -v 0.1
   ```
 
-- You can also directly install the package [here](https://github.com/miskcoo/ugreen_dx4600_leds_controller/releases).
+- You can also directly install the package [here](https://github.com/miskcoo/ugreen_leds_controller/releases).
 
 After loading the `led-ugreen` module, you need to run `scripts/ugreen-probe-leds`, and you can see LEDs in `/sys/class/leds`.
 
@@ -155,7 +155,7 @@ echo 1 > /sys/class/leds/$led/rx
 echo 100 > /sys/class/leds/$led/interval
 ```
 
-To blink the `disk` LED when a block device is active, you can use the `ledtrig-oneshot` module and monitor the changes of`/sys/block/sda/stat` (see `scripts/ugreen-diskiomon` for an example). If you are using zfs, you can combine this script with that provided in [#1](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/1) to change the LED's color when a disk drive failure occurs. To see how to map the disk LEDs to correct disk slots, please read the [Disk Mapping](#disk-mapping) section.
+To blink the `disk` LED when a block device is active, you can use the `ledtrig-oneshot` module and monitor the changes of`/sys/block/sda/stat` (see `scripts/ugreen-diskiomon` for an example). If you are using zfs, you can combine this script with that provided in [#1](https://github.com/miskcoo/ugreen_leds_controller/issues/1) to change the LED's color when a disk drive failure occurs. To see how to map the disk LEDs to correct disk slots, please read the [Disk Mapping](#disk-mapping) section.
 
 #### Start at Boot (for Debian 12)
 
@@ -171,7 +171,7 @@ ledtrig-netdev
 
 - Install the `smartctl` tool: `apt install smartmontools`
 
-- Install the kernel module by one of the three methods mentioned above. For example, directly install [the deb package](https://github.com/miskcoo/ugreen_dx4600_leds_controller/releases).
+- Install the kernel module by one of the three methods mentioned above. For example, directly install [the deb package](https://github.com/miskcoo/ugreen_leds_controller/releases).
 
 - Copy files in the `scripts` directory: 
 ```bash
@@ -204,7 +204,7 @@ systemctl enable ugreen-diskiomon
 
 To make the disk LEDs useful, we should map the disk LEDs to correct disk slots. First of all, we should highlight that using `/dev/sdX` is never a smart idea, as it may change at every boot. In the script `ugreen-diskiomon` we provide three mapping methods: **by ATA**, **by HCTL** and **by serial**. 
 
-The best mapping method is using serial numbers, but it needs to record them manually and fill the `DISK_SERIAL` array in `/etc/ugreen-leds.conf`. We use ATA mapping by default, and find that UGOS also uses a similar mapping method (see [#15](https://github.com/miskcoo/ugreen_dx4600_leds_controller/pull/15)). See the comments in `scripts/ugreen-leds.conf` for more details.
+The best mapping method is using serial numbers, but it needs to record them manually and fill the `DISK_SERIAL` array in `/etc/ugreen-leds.conf`. We use ATA mapping by default, and find that UGOS also uses a similar mapping method (see [#15](https://github.com/miskcoo/ugreen_leds_controller/pull/15)). See the comments in `scripts/ugreen-leds.conf` for more details.
 
 The HCTL mapping depends on how the SATA controllers are connected to the PCIe bus and the disk slots. To check the HCTL order, you can run the following command, and check the serial of your disks:
 
@@ -221,7 +221,7 @@ sdg  6:0:0:0    XXKH3SXX
 sdh  7:0:0:0    XXJDB1XX
 ```
 
-As far as we know, the mapping between HCTL and the disk serial are stable at each boot (see [#4](https://github.com/miskcoo/ugreen_dx4600_leds_controller/pull/4) and [#9](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/9)). However, it has been reported that the exact order is model-dependent (see [#9](https://github.com/miskcoo/ugreen_dx4600_leds_controller/issues/9)). In DX4600 Pro and DXP8800 Plus, the mapping is `X:0:0:0 -> diskX`, but in DXP6800 Pro, `0:0:0:0` and  `1:0:0:0` are mapped to `disk5` and `disk6`, and `2:0:0:0` to `6:0:0:0` are mapped to `disk1` to `disk4`. The script will use `dmidecode` to detect the device model, but I suggest to check the mapping outputed by the script manually.
+As far as we know, the mapping between HCTL and the disk serial are stable at each boot (see [#4](https://github.com/miskcoo/ugreen_leds_controller/pull/4) and [#9](https://github.com/miskcoo/ugreen_leds_controller/issues/9)). However, it has been reported that the exact order is model-dependent (see [#9](https://github.com/miskcoo/ugreen_leds_controller/issues/9)). In DX4600 Pro and DXP8800 Plus, the mapping is `X:0:0:0 -> diskX`, but in DXP6800 Pro, `0:0:0:0` and  `1:0:0:0` are mapped to `disk5` and `disk6`, and `2:0:0:0` to `6:0:0:0` are mapped to `disk1` to `disk4`. The script will use `dmidecode` to detect the device model, but I suggest to check the mapping outputed by the script manually.
 
 ## Communication Protocols
 
