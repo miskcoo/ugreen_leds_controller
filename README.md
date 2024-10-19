@@ -2,7 +2,7 @@ LED Controller for UGREEN's DX/DXP NAS Series
 ==
 
 UGREEN's DX/DXP NAS Series covers 2 to 8 bay NAS devices with a built-in system based on OpenWRT called `UGOS`.  
-Debian or other open-source NAS systems are compatible with the hardware, but do not have drivers for the LED lights on the front panel to indicate power, network and hard drive activity.  
+Debian Linux or dedicated NAS operating systems and appliances are compatible with the hardware, but do not have drivers for the LED lights on the front panel to indicate power, network and hard drive activity.  
 Instead, when using a 3rd party OS with DX 4600 Pro, only the power indicator light blinks, and the other LEDs are off by default.
 
 This repository
