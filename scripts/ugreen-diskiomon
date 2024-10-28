@@ -109,6 +109,7 @@ BRIGHTNESS_DISK_LEDS=${BRIGHTNESS_DISK_LEDS:="255"}
 
 
 { lsmod | grep ledtrig_oneshot > /dev/null; } || { modprobe -v ledtrig_oneshot && sleep 2; }
+{ lsmod | grep ledtrig_blkdev > /dev/null; } || modprobe -v ledtrig-blkdev 2> /dev/null
 
 function disk_enumerating_string() {
     if [[ $MAPPING_METHOD == ata ]]; then
@@ -143,9 +144,15 @@ done <<< "$(disk_enumerating_string)"
 # initialize LEDs
 declare -A dev_to_led_map
 for i in "${!led_map[@]}"; do
-    led=${led_map[i]} 
+    led=${led_map[i]}
     if [[ -d /sys/class/leds/$led ]]; then
-        echo oneshot > /sys/class/leds/$led/trigger
+        # check if ledtrig-blkdev is available
+        if grep -q blkdev /sys/class/leds/$led/trigger; then
+            echo blkdev > /sys/class/leds/$led/trigger
+            CHECK_DISKIO=false
+        else
+            echo oneshot > /sys/class/leds/$led/trigger
+        fi
         echo 1 > /sys/class/leds/$led/invert
         echo 100 > /sys/class/leds/$led/delay_on
         echo 100 > /sys/class/leds/$led/delay_off
@@ -155,13 +162,17 @@ for i in "${!led_map[@]}"; do
         # find corresponding device
         _tmp_str=${MAPPING_METHOD}_map[@]
         _tmp_arr=(${!_tmp_str})
-        
+
         if [[ -v "dev_map[${_tmp_arr[i]}]" ]]; then
             dev=${dev_map[${_tmp_arr[i]}]}
 
             if [[ -f /sys/class/block/${dev}/stat ]]; then
                 devices[$led]=${dev}
                 dev_to_led_map[$dev]=$led
+                # link led to the device if ledtrig-blkdev is loaded
+                if [[ -f /sys/class/leds/$led/link_dev_by_path ]]; then
+                    echo "/dev/${dev}" > /sys/class/leds/$led/link_dev_by_path
+                fi
             else
                 # turn off the led if no disk installed on this slot
                 echo 0 > /sys/class/leds/$led/brightness
@@ -226,8 +237,11 @@ if [ "$CHECK_ZPOOL" = true ]; then
                     fi
 
                     if [[ "${zpool_dev_state}" != "ONLINE" ]]; then
+                        if [[ -f /sys/class/leds/$led/unlink_dev_by_name ]]; then
+                            echo $zpool_dev_name > /sys/class/leds/$led/unlink_dev_by_name
+                        fi
                         echo "$COLOR_ZPOOL_FAIL" > /sys/class/leds/$led/color
-                        echo Disk failure detected on /dev/$dev at $(date +%Y-%m-%d' '%H:%M:%S)
+                        echo Disk failure detected on /dev/$zpool_dev_name at $(date +%Y-%m-%d' '%H:%M:%S)
                     fi
 
                     # ==== To recover from an error, you should restart the script ====
@@ -284,6 +298,9 @@ fi
             fi
 
             if [[ ! -f /sys/class/block/${dev}/stat ]]; then
+                if [[ -f /sys/class/leds/$led/unlink_dev_by_name ]]; then
+                    echo ${dev} > /sys/class/leds/$led/unlink_dev_by_name
+                fi
                 echo "$COLOR_DISK_UNAVAIL" > /sys/class/leds/$led/color 2>/dev/null
                 echo Disk /dev/$dev went offline at $(date +%Y-%m-%d' '%H:%M:%S)
                 continue
@@ -294,21 +311,25 @@ fi
 ) &
 disk_online_check_pid=$!
 
-# monitor disk activities
+# monitor disk activities when ledtrig-blkdev is not available
 declare -A diskio_data_rw
-while true; do
-    for led in "${!devices[@]}"; do
+if [ "$CHECK_DISKIO" != "false" ]; then
+    while true; do
+        for led in "${!devices[@]}"; do
 
-        # if $dev does not exist, diskio_new_rw="", which will be safe
-        diskio_new_rw="$(cat /sys/block/${devices[$led]}/stat 2>/dev/null)"
+            # if $dev does not exist, diskio_new_rw="", which will be safe
+            diskio_new_rw="$(cat /sys/block/${devices[$led]}/stat 2>/dev/null)"
 
-        if [ "${diskio_data_rw[$led]}" != "${diskio_new_rw}" ]; then
-            echo 1 > /sys/class/leds/$led/shot
-        fi
+            if [ "${diskio_data_rw[$led]}" != "${diskio_new_rw}" ]; then
+                echo 1 > /sys/class/leds/$led/shot
+            fi
 
-        diskio_data_rw[$led]=$diskio_new_rw
+            diskio_data_rw[$led]=$diskio_new_rw
+        done
+
+        sleep ${LED_REFRESH_INTERVAL}s
+
     done
+fi
 
-    sleep ${LED_REFRESH_INTERVAL}s
-
-done
+wait $disk_online_check_pid
