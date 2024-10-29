@@ -295,20 +295,37 @@ fi
 disk_online_check_pid=$!
 
 # monitor disk activities
-declare -A diskio_data_rw
-while true; do
+BLINK_MON_PATH=${BLINK_MON_PATH:=/usr/bin/ugreen-blink-disk}
+if [ -f "${BLINK_MON_PATH}" ]; then
+
+    declare -A blinkmon_pids
     for led in "${!devices[@]}"; do
 
-        # if $dev does not exist, diskio_new_rw="", which will be safe
-        diskio_new_rw="$(cat /sys/block/${devices[$led]}/stat 2>/dev/null)"
-
-        if [ "${diskio_data_rw[$led]}" != "${diskio_new_rw}" ]; then
-            echo 1 > /sys/class/leds/$led/shot
-        fi
-
-        diskio_data_rw[$led]=$diskio_new_rw
+        "${BLINK_MON_PATH}" ${devices[$led]} $led ${LED_REFRESH_INTERVAL} &
+        blinkmon_pids[$led]=$!
     done
 
-    sleep ${LED_REFRESH_INTERVAL}s
+    # wait for all pids
+    for pid in ${blinkmon_pids[*]}; do
+        wait $pid
+    done
 
-done
+else 
+    declare -A diskio_data_rw
+    while true; do
+        for led in "${!devices[@]}"; do
+
+            # if $dev does not exist, diskio_new_rw="", which will be safe
+            diskio_new_rw="$(cat /sys/block/${devices[$led]}/stat 2>/dev/null)"
+
+            if [ "${diskio_data_rw[$led]}" != "${diskio_new_rw}" ]; then
+                echo 1 > /sys/class/leds/$led/shot
+            fi
+
+            diskio_data_rw[$led]=$diskio_new_rw
+        done
+
+        sleep ${LED_REFRESH_INTERVAL}s
+
+    done
+fi
