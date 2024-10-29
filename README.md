@@ -28,7 +28,8 @@ For the process of understanding this control logic, please refer to [my blog (i
 
 For third-party systems, I am using Debian 12 "Bookworm", but you can find some manuals for other systems:
 - **DSM**: see [#8](https://github.com/miskcoo/ugreen_leds_controller/issues/8)
-- **TrueNAS**: see [#13](https://github.com/miskcoo/ugreen_leds_controller/issues/13) (and maybe [here](https://github.com/miskcoo/ugreen_leds_controller/tree/truenas-build/build-scripts/truenas)) for how to build the module, and [here](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8) for a script using the cli tool; [here](https://github.com/miskcoo/ugreen_leds_controller/tree/gh-actions/build-scripts/truenas/build) for pre-build drivers 
+- **TrueNAS**: see [#13](https://github.com/miskcoo/ugreen_leds_controller/issues/13) (and maybe [here](https://github.com/miskcoo/ugreen_leds_controller/tree/truenas-build/build-scripts/truenas)) for how to build the module, and [here](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8) for a script using the cli tool; [here](https://github.com/miskcoo/ugreen_leds_controller/tree/gh-actions/build-scripts/truenas/build) for pre-build drivers.
+  - *NB see below for [important information regarding TrueNAS Scale installations and upgrades](#important-information-for-truenas-scale-users)*
 - **unRAID**: there is a [plugin](https://forums.unraid.net/topic/168423-ugreen-nas-led-control/); see also [this repo](https://github.com/ich777/unraid-ugreenleds-driver/tree/master/source/usr/bin)
 - **Proxmox**: you need to use the cli tool in Proxmox, not in a VM
 - **Debian**: see [the section below](#start-at-boot-for-debian-12)
@@ -210,6 +211,19 @@ Please see `scripts/ugreen-leds.conf` for an example.
   systemctl enable ugreen-netdevmon@enp2s0 
   systemctl enable ugreen-diskiomon
   ```
+
+##### Important information for TrueNAS Scale users
+
+The installation and upgrade process for TrueNAS Scale overwrites all of
+
+```
+/etc/
+/etc/modprobe.d/
+/etc/modules-load.d/
+/lib/modules/$(uname -r)/kernel/drivers/leds/
+```
+
+with those contained in the release build image and remounts the underlying filesystem as read only once installed, so [developer mode](https://www.truenas.com/docs/scale/scaletutorials/systemsettings/advanced/developermode/) must be enabled to both compile the kernel module (if you want to compile it on the UGREEN device) _and_ install it and all associated config files to ensure it loads on boot. Developer mode does not persist over upgrades for the same reasons.
 
 ## Disk Mapping
 
