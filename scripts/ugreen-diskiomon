@@ -298,17 +298,14 @@ disk_online_check_pid=$!
 BLINK_MON_PATH=${BLINK_MON_PATH:=/usr/bin/ugreen-blink-disk}
 if [ -f "${BLINK_MON_PATH}" ]; then
 
-    declare -A blinkmon_pids
-    for led in "${!devices[@]}"; do
+    diskiomon_parameters() {
+        echo ${LED_REFRESH_INTERVAL}
+        for led in "${!devices[@]}"; do
+            echo ${devices[$led]} $led
+        done
+    }
 
-        "${BLINK_MON_PATH}" ${devices[$led]} $led ${LED_REFRESH_INTERVAL} &
-        blinkmon_pids[$led]=$!
-    done
-
-    # wait for all pids
-    for pid in ${blinkmon_pids[*]}; do
-        wait $pid
-    done
+    ${BLINK_MON_PATH} $(diskiomon_parameters)
 
 else 
     declare -A diskio_data_rw

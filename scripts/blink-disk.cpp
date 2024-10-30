@@ -1,42 +1,69 @@
 #include <fstream>
 #include <thread>
+#include <vector>
 #include <iostream>
 #include <string>
 #include <chrono>
 
 int main(int argc, char *argv[]) {
-    if (argc < 4) {
-        std::cerr << "Usage: " << argv[0] << " <block device> <led device> <sleep time (in second)>\n";
+    if (argc < 4 || argc % 2 != 0) {
+        std::cerr << "Usage: " << argv[0] << " <sleep time (in second)>"
+            << " <block device 1> <led device 1> <block device 2> <led device 2>...\n";
         return 1;
     }
 
-    std::string block_device = argv[1];
-    std::string led_device = argv[2];
-    int sleep_time_ms = int(std::stod(argv[3]) * 1000);
+    int num_devices = (argc - 2) / 2;
+    int sleep_time_ms = int(std::stod(argv[1]) * 1000);
 
-    std::string block_device_stat = "/sys/block/" + block_device + "/stat";
-    std::string led_device_shot = "/sys/class/leds/" + led_device + "/shot";
+    std::vector<std::string> block_device_stat_paths;
+    std::vector<std::string> led_device_shot_paths;
 
-    for (std::string line, old_line; ; old_line = line) {
+    for (int i = 0; i < num_devices; i++) {
+        std::string block_device = argv[2 + 2 * i];
+        std::string led_device = argv[3 + 2 * i];
 
-        std::ifstream stat_file(block_device_stat);
-        if (!stat_file.is_open()) {
-            std::cerr << "Failed to open " << block_device_stat << "\n";
-            return 1;
-        }
+        block_device_stat_paths.push_back(
+                "/sys/block/" + block_device + "/stat");
+        led_device_shot_paths.push_back(
+                "/sys/class/leds/" + led_device + "/shot");
+    }
 
-        std::getline(stat_file, line);
-        stat_file.close();
+    std::vector<bool> device_status(num_devices, true);
+    std::vector<std::string> old_lines(num_devices);
 
-        if (line != old_line) {
-            std::ofstream led_file(led_device_shot);
-            if (!led_file.is_open()) {
-                std::cerr << "Failed to open " << led_device_shot << "\n";
-                return 1;
+    while (true) {
+        for (int i = 0; i < num_devices; i++) {
+
+            if (!device_status[i]) {
+                continue;
             }
 
-            led_file << "1";
-            led_file.close();
+            std::ifstream stat_file(block_device_stat_paths[i]);
+
+            if (!stat_file.is_open()) {
+                std::cerr << "Failed to open " << block_device_stat_paths[i] << "\n";
+                device_status[i] = false;
+                continue;
+            }
+
+            std::string line;
+            std::getline(stat_file, line);
+            stat_file.close();
+
+            if (line != old_lines[i]) {
+
+                std::ofstream led_file(led_device_shot_paths[i]);
+                if (!led_file.is_open()) {
+                    std::cerr << "Failed to open " << led_device_shot_paths[i] << "\n";
+                    device_status[i] = false;
+                    continue;
+                }
+
+                led_file << "1";
+                led_file.close();
+
+                old_lines[i] = std::move(line);
+            }
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
