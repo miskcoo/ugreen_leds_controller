@@ -103,6 +103,7 @@ CHECK_DISK_ONLINE_INTERVAL=${CHECK_DISK_ONLINE_INTERVAL:=5}
 
 COLOR_DISK_HEALTH=${COLOR_DISK_HEALTH:="255 255 255"}
 COLOR_DISK_UNAVAIL=${COLOR_DISK_UNAVAIL:="255 0 0"}
+COLOR_DISK_STANDBY=${COLOR_DISK_STANDBY:="0 0 255"}
 COLOR_ZPOOL_FAIL=${COLOR_ZPOOL_FAIL:="255 0 0"}
 COLOR_SMART_FAIL=${COLOR_SMART_FAIL:="255 0 0"}
 BRIGHTNESS_DISK_LEDS=${BRIGHTNESS_DISK_LEDS:="255"}
@@ -261,7 +262,12 @@ if [ "$CHECK_SMART" = true ]; then
 
             dev=${devices[$led]}
 
-            if [[ -z $(smartctl -H /dev/${dev} | grep PASSED) ]]; then
+            /usr/sbin/smartctl -H /dev/${dev} -n standby,1 &> /dev/null
+            RET=$?
+
+            if [[ $RET -eq 1 ]]; then
+                echo "$COLOR_DISK_STANDBY" > /sys/class/leds/$led/color
+            elif [[ $RET -gt 1 ]]; then
                 echo "$COLOR_SMART_FAIL" > /sys/class/leds/$led/color
                 echo Disk failure detected on /dev/$dev at $(date +%Y-%m-%d' '%H:%M:%S)
                 continue
@@ -279,7 +285,22 @@ fi
         for led in "${!devices[@]}"; do
             dev=${devices[$led]}
 
-            if [[ "$(cat /sys/class/leds/$led/color)" != "$COLOR_DISK_HEALTH" ]]; then
+            led_color=$(cat /sys/class/leds/$led/color)
+
+            if [[ "$led_color" == "$COLOR_DISK_STANDBY" ]]; then
+                # Check if disk is still in standby
+                /usr/sbin/smartctl -H /dev/${dev} -n standby,1 &> /dev/null
+                RET=$?
+
+                if [[ $RET -eq 0 ]]; then
+                    led_color="$COLOR_DISK_HEALTH"
+                    echo $led_color > /sys/class/leds/$led/color
+                elif [[ $RET -gt 1 ]]; then
+                    echo "$COLOR_SMART_FAIL" > /sys/class/leds/$led/color
+                    echo Disk failure detected on /dev/$dev at $(date +%Y-%m-%d' '%H:%M:%S)
+                    continue
+                fi
+            elif [[ "$led_color" != "$COLOR_DISK_HEALTH" ]]; then
                 continue;
             fi
 
