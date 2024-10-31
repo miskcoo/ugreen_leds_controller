@@ -211,6 +211,15 @@ Please see `scripts/ugreen-leds.conf` for an example.
   systemctl enable ugreen-diskiomon
   ```
 
+- (_Optional_) To reduce the CPU usage of blinking LEDs when disks are active, you can enter the `scripts` directory and do the following things:
+  ```bash
+  # compile the disk activities monitor
+  g++ -std=c++17 -O2 blink-disk.cpp -o ugreen-blink-disk
+
+  # copy the binary file (the path can be changed, see BLINK_MON_PATH in ugreen-leds.conf)
+  cp ugreen-blink-disk /usr/bin
+  ```
+
 ## Disk Mapping
 
 To make the disk LEDs useful, we should map the disk LEDs to correct disk slots. First of all, we should highlight that using `/dev/sdX` is never a smart idea, as it may change at every boot.  
