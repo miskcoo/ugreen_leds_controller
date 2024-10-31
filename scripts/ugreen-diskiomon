@@ -8,6 +8,7 @@ exit-ugreen-diskiomon() {
   kill $smart_check_pid 2>/dev/null
   kill $zpool_check_pid 2>/dev/null
   kill $disk_online_check_pid 2>/dev/null
+  kill $standby_checker_pid 2>/dev/null
 }
 
 # trap exit and remove lockfile
@@ -315,18 +316,26 @@ fi
 ) &
 disk_online_check_pid=$!
 
+
+diskiomon_parameters() {
+    for led in "${!devices[@]}"; do
+        echo ${devices[$led]} $led
+    done
+}
+
+# monitor disk standby modes
+STANDBY_MON_PATH=${STANDBY_MON_PATH:=/usr/bin/ugreen-check-standby}
+STANDBY_CHECK_INTERVAL=${STANDBY_CHECK_INTERVAL:=1}
+if [ -f "${STANDBY_MON_PATH}" ]; then
+    ${STANDBY_MON_PATH} ${STANDBY_CHECK_INTERVAL} "${COLOR_DISK_STANDBY}" "${COLOR_DISK_HEALTH}" $(diskiomon_parameters) &
+    standby_checker_pid=$1
+fi
+
 # monitor disk activities
 BLINK_MON_PATH=${BLINK_MON_PATH:=/usr/bin/ugreen-blink-disk}
 if [ -f "${BLINK_MON_PATH}" ]; then
 
-    diskiomon_parameters() {
-        echo ${LED_REFRESH_INTERVAL}
-        for led in "${!devices[@]}"; do
-            echo ${devices[$led]} $led
-        done
-    }
-
-    ${BLINK_MON_PATH} $(diskiomon_parameters)
+    ${BLINK_MON_PATH} ${LED_REFRESH_INTERVAL} $(diskiomon_parameters)
 
 else 
     declare -A diskio_data_rw
