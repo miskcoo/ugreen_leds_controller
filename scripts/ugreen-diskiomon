@@ -227,7 +227,7 @@ if [ "$CHECK_ZPOOL" = true ]; then
 
                     if [[ "${zpool_dev_state}" != "ONLINE" ]]; then
                         echo "$COLOR_ZPOOL_FAIL" > /sys/class/leds/$led/color
-                        echo Disk failure detected on /dev/$dev at $(date +%Y-%m-%d' '%H:%M:%S)
+                        echo Disk failure detected on /dev/$zpool_dev_name at $(date +%Y-%m-%d' '%H:%M:%S)
                     fi
 
                     # ==== To recover from an error, you should restart the script ====
