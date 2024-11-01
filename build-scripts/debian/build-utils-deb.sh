@@ -40,11 +40,11 @@ cp scripts/*.service $pkgname/etc/systemd/system/
 cp scripts/ugreen-leds.conf $pkgname/etc/ugreen-leds.example.conf
 
 # compile the disk activities monitor
-g++ -std=c++17 -O2 -static scripts/blink-disk.cpp -o ugreen-blink-disk
+g++ -std=c++17 -O2 scripts/blink-disk.cpp -o ugreen-blink-disk
 cp ugreen-blink-disk $pkgname/usr/bin
 
 # compile the disk standby monitor
-g++ -std=c++17 -O2 -static scripts/check-standby.cpp -o ugreen-check-standby
+g++ -std=c++17 -O2 scripts/check-standby.cpp -o ugreen-check-standby
 cp ugreen-check-standby $pkgname/usr/bin
 
 # change to root 
