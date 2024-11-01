@@ -15,7 +15,7 @@ Version: $pkgver
 Architecture: amd64
 Maintainer: Yuhao Zhou <miskcoo@gmail.com>
 Depends: dmidecode, smartmontools
-Homepage: https://github.com/miskcoo/ugreen_dx4600_leds_controller
+Homepage: https://github.com/miskcoo/ugreen_leds_controller
 Description: UGREEN NAS LED tools
  A reverse-engineered LED tools of UGREEN NAS.
 EOF

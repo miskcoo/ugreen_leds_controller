@@ -220,6 +220,15 @@ Please see `scripts/ugreen-leds.conf` for an example.
   cp ugreen-blink-disk /usr/bin
   ```
 
+- (_Optional_) Similarly, to reduce the latency of the standby check, you can enter the `scripts` directory and do the following things:
+  ```bash
+  # compile the disk standby checker
+  g++ -std=c++17 -O2 check-standby.cpp -o ugreen-check-standby
+
+  # copy the binary file (the path can be changed, see STANDBY_MON_PATH in ugreen-leds.conf)
+  cp ugreen-check-standby /usr/bin
+  ```
+
 ## Disk Mapping
 
 To make the disk LEDs useful, we should map the disk LEDs to correct disk slots. First of all, we should highlight that using `/dev/sdX` is never a smart idea, as it may change at every boot.  

@@ -15,7 +15,7 @@ Version: $pkgver
 Architecture: amd64
 Maintainer: Yuhao Zhou <miskcoo@gmail.com>
 Depends: dkms
-Homepage: https://github.com/miskcoo/ugreen_dx4600_leds_controller
+Homepage: https://github.com/miskcoo/ugreen_leds_controller
 Description: UGREEN NAS LED driver
  A reverse-engineered LED driver of UGREEN NAS.
 EOF
