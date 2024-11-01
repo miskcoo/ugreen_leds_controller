@@ -8,7 +8,7 @@
 
 Name:           kmod-%{kmod_name}
 Version:        0.1
-Release:        15%{?dist}
+Release:        16%{?dist}
 Summary:        %{kmod_name} kernel module(s)
 Group:          System Environment/Kernel
 License:        GPLv2
@@ -53,6 +53,7 @@ BuildRequires:  kernel-abi-stablelists
 BuildRequires:  kernel-rpm-macros
 BuildRequires:  redhat-rpm-config
 BuildRequires:  systemd-units
+BuildRequires:  gcc-c++
 
 Provides:       kernel-modules >= %{kmod_kernel_version}.%{_arch}
 Provides:       kmod-%{kmod_name} = %{?epoch:%{epoch}:}%{version}-%{release}
@@ -78,6 +79,10 @@ echo "override %{kmod_name} * weak-updates/%{kmod_name}" > kmod-%{kmod_name}.con
 %build
 pushd kmod
 %{__make} -C %{kernel_source} %{?_smp_mflags} modules M=$PWD
+popd
+
+pushd scripts
+%{__cxx} -std=c++17 -O2 blink-disk.cpp -o ugreen-blink-disk
 popd
 
 whitelist="/lib/modules/kabi-current/kabi_stablelist_%{_target_cpu}"
@@ -106,6 +111,7 @@ mkdir -p %{buildroot}%{_bindir}/
 %{__install} -m 0755 scripts/ugreen-diskiomon  %{buildroot}%{_bindir}/
 %{__install} -m 0755 scripts/ugreen-netdevmon  %{buildroot}%{_bindir}/
 %{__install} -m 0755 scripts/ugreen-probe-leds %{buildroot}%{_bindir}/
+%{__install} -m 0755 scripts/ugreen-blink-disk %{buildroot}%{_bindir}/
 
 mkdir -p %{buildroot}%{_unitdir}/
 %{__install} -m 0644 scripts/ugreen-netdevmon@.service  %{buildroot}%{_unitdir}/
@@ -214,6 +220,7 @@ exit 0
 %attr(0755, root, root) %{_bindir}/ugreen-diskiomon
 %attr(0755, root, root) %{_bindir}/ugreen-netdevmon
 %attr(0755, root, root) %{_bindir}/ugreen-probe-leds
+%attr(0755, root, root) %{_bindir}/ugreen-blink-disk
 %{_unitdir}/ugreen-netdevmon@.service
 %{_unitdir}/ugreen-diskiomon.service
 
