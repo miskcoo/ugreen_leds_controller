@@ -222,8 +222,10 @@ if [ "$CHECK_ZPOOL" = true ]; then
 
                 if [[ -v "zpool_ledmap[${zpool_dev_name}]" ]]; then
                     led=${zpool_ledmap[$zpool_dev_name]}
+                    led_color=$(cat /sys/class/leds/$led/color)
 
-                    if [[ "$(cat /sys/class/leds/$led/color)" != "$COLOR_DISK_HEALTH" ]]; then
+                    if [[ "$led_color" != "$COLOR_DISK_HEALTH" ]] && \
+                        [[ "$led_color" != "$COLOR_DISK_STANDBY" ]]; then
                         continue;
                     fi
 
