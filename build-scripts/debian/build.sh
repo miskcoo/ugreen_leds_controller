@@ -1,9 +1,11 @@
 #!/usr/bin/bash
 
+set -x
+
 git clone https://github.com/miskcoo/ugreen_leds_controller.git 
 cd ugreen_leds_controller 
 
-if [[ $1 ]]; then 
+if [ ! -z $1 ]; then 
     git checkout $1
 fi
 
