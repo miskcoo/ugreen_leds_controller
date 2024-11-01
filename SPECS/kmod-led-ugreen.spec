@@ -8,7 +8,7 @@
 
 Name:           kmod-%{kmod_name}
 Version:        0.1
-Release:        16%{?dist}
+Release:        17%{?dist}
 Summary:        %{kmod_name} kernel module(s)
 Group:          System Environment/Kernel
 License:        GPLv2
@@ -83,6 +83,7 @@ popd
 
 pushd scripts
 %{__cxx} -std=c++17 -O2 blink-disk.cpp -o ugreen-blink-disk
+%{__cxx} -std=c++17 -O2 check-standby.cpp -o ugreen-check-standby
 popd
 
 whitelist="/lib/modules/kabi-current/kabi_stablelist_%{_target_cpu}"
@@ -112,6 +113,7 @@ mkdir -p %{buildroot}%{_bindir}/
 %{__install} -m 0755 scripts/ugreen-netdevmon  %{buildroot}%{_bindir}/
 %{__install} -m 0755 scripts/ugreen-probe-leds %{buildroot}%{_bindir}/
 %{__install} -m 0755 scripts/ugreen-blink-disk %{buildroot}%{_bindir}/
+%{__install} -m 0755 scripts/ugreen-check-standby %{buildroot}%{_bindir}/
 
 mkdir -p %{buildroot}%{_unitdir}/
 %{__install} -m 0644 scripts/ugreen-netdevmon@.service  %{buildroot}%{_unitdir}/
@@ -221,6 +223,7 @@ exit 0
 %attr(0755, root, root) %{_bindir}/ugreen-netdevmon
 %attr(0755, root, root) %{_bindir}/ugreen-probe-leds
 %attr(0755, root, root) %{_bindir}/ugreen-blink-disk
+%attr(0755, root, root) %{_bindir}/ugreen-check-standby
 %{_unitdir}/ugreen-netdevmon@.service
 %{_unitdir}/ugreen-diskiomon.service
 
