@@ -11,3 +11,4 @@ bash build-scripts/debian/build-dkms-deb.sh
 bash build-scripts/debian/build-utils-deb.sh
 dpkg-name led-ugreen-dkms.deb
 dpkg-name led-ugreen-utils.deb
+mv *.deb ..
