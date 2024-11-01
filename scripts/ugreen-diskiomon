@@ -112,7 +112,7 @@ BRIGHTNESS_DISK_LEDS=${BRIGHTNESS_DISK_LEDS:="255"}
 
 { lsmod | grep ledtrig_oneshot > /dev/null; } || { modprobe -v ledtrig_oneshot && sleep 2; }
 
-function is_disk_healthy() {
+function is_disk_healthy_or_standby() {
     if [[ "$1" == "$COLOR_DISK_HEALTH" || "$1" == "$COLOR_DISK_STANDBY" ]]; then
         return 0  # 0 means successful
     else
@@ -232,7 +232,7 @@ if [ "$CHECK_ZPOOL" = true ]; then
                     led=${zpool_ledmap[$zpool_dev_name]}
                     led_color=$(cat /sys/class/leds/$led/color)
 
-                    if ! is_disk_healthy "$led_color"; then
+                    if ! is_disk_healthy_or_standby "$led_color"; then
                         continue;
                     fi
 
@@ -268,7 +268,7 @@ if [ "$CHECK_SMART" = true ]; then
         for led in "${!devices[@]}"; do
 
             led_color=$(cat /sys/class/leds/$led/color)
-            if ! is_disk_healthy "$led_color"; then
+            if ! is_disk_healthy_or_standby "$led_color"; then
                 continue;
             fi
 
@@ -296,7 +296,7 @@ fi
             dev=${devices[$led]}
 
             led_color=$(cat /sys/class/leds/$led/color)
-            if ! is_disk_healthy "$led_color"; then
+            if ! is_disk_healthy_or_standby "$led_color"; then
                 continue;
             fi
 
