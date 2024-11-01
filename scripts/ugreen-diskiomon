@@ -112,6 +112,14 @@ BRIGHTNESS_DISK_LEDS=${BRIGHTNESS_DISK_LEDS:="255"}
 
 { lsmod | grep ledtrig_oneshot > /dev/null; } || { modprobe -v ledtrig_oneshot && sleep 2; }
 
+function is_disk_healthy() {
+    if [[ "$1" == "$COLOR_DISK_HEALTH" || "$1" == "$COLOR_DISK_STANDBY" ]]; then
+        return 0  # 0 means successful
+    else
+        return 1
+    fi
+}
+
 function disk_enumerating_string() {
     if [[ $MAPPING_METHOD == ata ]]; then
         ls -ahl /sys/block | sed 's/\/$//' | awk '{
@@ -224,8 +232,7 @@ if [ "$CHECK_ZPOOL" = true ]; then
                     led=${zpool_ledmap[$zpool_dev_name]}
                     led_color=$(cat /sys/class/leds/$led/color)
 
-                    if [[ "$led_color" != "$COLOR_DISK_HEALTH" ]] && \
-                        [[ "$led_color" != "$COLOR_DISK_STANDBY" ]]; then
+                    if ! is_disk_healthy "$led_color"; then
                         continue;
                     fi
 
@@ -259,7 +266,9 @@ if [ "$CHECK_SMART" = true ]; then
 (
     while true; do
         for led in "${!devices[@]}"; do
-            if [[ "$(cat /sys/class/leds/$led/color)" != "$COLOR_DISK_HEALTH" ]]; then
+
+            led_color=$(cat /sys/class/leds/$led/color)
+            if ! is_disk_healthy "$led_color"; then
                 continue;
             fi
 
@@ -268,9 +277,7 @@ if [ "$CHECK_SMART" = true ]; then
             /usr/sbin/smartctl -H /dev/${dev} -n standby,1 &> /dev/null
             RET=$?
 
-            if [[ $RET -eq 1 ]]; then
-                echo "$COLOR_DISK_STANDBY" > /sys/class/leds/$led/color
-            elif [[ $RET -gt 1 ]]; then
+            if [[ $RET -gt 1 ]]; then
                 echo "$COLOR_SMART_FAIL" > /sys/class/leds/$led/color
                 echo Disk failure detected on /dev/$dev at $(date +%Y-%m-%d' '%H:%M:%S)
                 continue
@@ -289,21 +296,7 @@ fi
             dev=${devices[$led]}
 
             led_color=$(cat /sys/class/leds/$led/color)
-
-            if [[ "$led_color" == "$COLOR_DISK_STANDBY" ]]; then
-                # Check if disk is still in standby
-                /usr/sbin/smartctl -H /dev/${dev} -n standby,1 &> /dev/null
-                RET=$?
-
-                if [[ $RET -eq 0 ]]; then
-                    led_color="$COLOR_DISK_HEALTH"
-                    echo $led_color > /sys/class/leds/$led/color
-                elif [[ $RET -gt 1 ]]; then
-                    echo "$COLOR_SMART_FAIL" > /sys/class/leds/$led/color
-                    echo Disk failure detected on /dev/$dev at $(date +%Y-%m-%d' '%H:%M:%S)
-                    continue
-                fi
-            elif [[ "$led_color" != "$COLOR_DISK_HEALTH" ]]; then
+            if ! is_disk_healthy "$led_color"; then
                 continue;
             fi
 
