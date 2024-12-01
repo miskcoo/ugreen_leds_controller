@@ -16,6 +16,7 @@ For the process of understanding this control logic, please refer to [my blog (i
 > - [x] UGREEN DX4600 Pro
 > - [x] UGREEN DX4700+
 > - [x] UGREEN DXP2800 (reported in [#19](https://github.com/miskcoo/ugreen_leds_controller/issues/19))
+> - [x] UGREEN DXP4800 (confirmed in [#41](https://github.com/miskcoo/ugreen_leds_controller/issues/41))
 > - [x] UGREEN DXP4800 Plus (reported [here](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8))
 > - [x] UGREEN DXP6800 Pro (reported in [#7](https://github.com/miskcoo/ugreen_leds_controller/issues/7))
 > - [x] UGREEN DXP8800 Plus (see [this repo](https://github.com/meyergru/ugreen_dxp8800_leds_controller) and [#1](https://github.com/miskcoo/ugreen_leds_controller/issues/1))
