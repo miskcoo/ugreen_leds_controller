@@ -262,13 +262,13 @@ sdh  7:0:0:0    XXJDB1XX
 
 ## Communication Protocols
 
-The IDs for the six LED lights on the front panel of the DX4600 Pro chassis are as follows: 
+The IDs for the LED lights on the front panel of the NAS chassis are as follows: 
 
-|    ID     | LED |
-|-----------|--------------------------------|
-| `0`       | Power indicator |
-| `1`       | Network device indicator |
-| `2` - `5` | Hard drive indicator 1-4 |
+|     ID      | LED |
+|-------------|--------------------------------|
+| `0`         | Power indicator |
+| `1`         | Network device indicator |
+| `2`,`3`,... | Hard drive indicator "disk1", "disk2" etc. |
 
 ### Query Status
 
