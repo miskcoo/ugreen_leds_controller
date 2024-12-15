@@ -24,6 +24,10 @@
 #endif
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+static bool verbose = false;
+module_param(verbose, bool, 0644);
+MODULE_PARM_DESC(verbose, "Enable verbose output");
+
 static struct ugreen_led_state *lcdev_to_ugreen_led_state(struct led_classdev *led_cdev) {
     return container_of(led_cdev, struct ugreen_led_state, cdev);
 }
@@ -183,7 +187,7 @@ static void ugreen_led_turn_on_or_off_unlock(struct ugreen_led_array *priv, u8 l
     int rc = ugreen_led_change_state_robust(priv->client, led_id, 0x03, on ? 1 : 0, 0, 0, 0);
     if (rc == 0) {
         priv->state[led_id].status = on ? UGREEN_LED_STATE_ON : UGREEN_LED_STATE_OFF;
-    } else {
+    } else if (verbose) {
         pr_err("failed to turn %d %s", led_id, on ? "on" : "off");
     }
 }
@@ -199,7 +203,7 @@ static void ugreen_led_set_brightness_unlock(struct ugreen_led_array *priv, u8 l
             int rc = ugreen_led_change_state_robust(priv->client, led_id, 0x01, brightness, 0, 0, 0);
             if (rc == 0) {
                 state->brightness = brightness;
-            } else {
+            } else if (verbose) {
                 pr_err("failed to set brightness of %d to %d", led_id, brightness);
             }
         }
@@ -223,7 +227,7 @@ static void ugreen_led_set_color_unlock(struct ugreen_led_array *priv, u8 led_id
             state->r = r;
             state->g = g;
             state->b = b;
-        } else {
+        } else if (verbose) {
             pr_err("failed to set color of %d to 0x%02x%02x%02x", led_id, r, g, b);
         }
     }
@@ -247,7 +251,7 @@ static void ugreen_led_set_blink_or_breath_unlock(struct ugreen_led_array *priv,
             state->t_on = t_on;
             state->t_cycle = t_cycle;
             state->status = led_status;
-        } else {
+        } else if (verbose) {
             pr_err("failed to set %s of %d to %d %d", is_blink ? "blink" : "breath", led_id, t_on, t_cycle);
         }
     }
