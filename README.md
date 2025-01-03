@@ -3,11 +3,11 @@ LED Controller for UGREEN's DX/DXP NAS Series
 
 UGREEN's DX/DXP NAS Series covers 2 to 8 bay NAS devices with a built-in system based on OpenWRT called `UGOS`.  
 Debian Linux or dedicated NAS operating systems and appliances are compatible with the hardware, but do not have drivers for the LED lights on the front panel to indicate power, network and hard drive activity.  
-Instead, when using a 3rd party OS with DX 4600 Pro, only the power indicator light blinks, and the other LEDs are off by default.
+Instead, when using a 3rd party OS with e.g. DX 4600 Pro, only the power indicator light blinks, and the other LEDs are off by default. For the DXP series, all LEDs blink in rolling sequence when non-UGOS systems are running.
 
 This repository
- - describes the control logic of UGOS for these LED lights
- - provides a command-line tool and a kernel module to control them  
+ - Describes the control logic of UGOS for the LED lights on the device front
+ - Provides a command-line tool and a kernel module to control them  
 
 For the process of understanding this control logic, please refer to [my blog (in Chinese)](https://blog.miskcoo.com/2024/05/ugreen-dx4600-pro-led-controller).
 
@@ -262,13 +262,13 @@ sdh  7:0:0:0    XXJDB1XX
 
 ## Communication Protocols
 
-The IDs for the six LED lights on the front panel of the DX4600 Pro chassis are as follows: 
+The IDs for the LED lights on the front panel of the NAS chassis are as follows: 
 
-| ID | LED |
-|------|--------------------------------|
-| 0    | power indicator |
-| 1    | network device indicator |
-| 2-5  | hard drive indicator 1-4 |
+|     ID      | LED |
+|-------------|--------------------------------|
+| `0`         | Power indicator |
+| `1`         | Network device indicator |
+| `2`,`3`,... | Hard drive indicator "disk1", "disk2" etc. |
 
 ### Query Status
 
@@ -276,17 +276,17 @@ Reading 11 bytes from the address `0x81 + LED_ID` allows us to obtain the curren
 
 | Address | Meaning of Corresponding Data |
 |---------|--------------------------------|
-| 0x00    | LED status: 0 - off, 1 - on, 2 - blink, 3 - breath |
-| 0x01    | LED brightness |
-| 0x02    | LED color (Red component in RGB) |
-| 0x03    | LED color (Green component in RGB) |
-| 0x04    | LED color (Blue component in RGB) |
-| 0x05    | Milliseconds needed to complete one blink / breath cycle (high 8 bits) |
-| 0x06    | Milliseconds needed to complete one blink / breath cycle (low 8 bits) |
-| 0x07    | Milliseconds the LED is on during one blink / breath cycle (high 8 bits) |
-| 0x08    | Milliseconds the LED is on during one blink / breath cycle (low 8 bits) |
-| 0x09    | Checksum of data in the range 0x00 - 0x08 (high 8 bits) |
-| 0x0a    | Checksum of data in the range 0x00 - 0x08 (low 8 bits) |
+| `0x00`  | LED status: 0 (off), 1 (on), 2 (blink), 3 (breath) |
+| `0x01`  | LED brightness |
+| `0x02`  | LED color (Red component in RGB) |
+| `0x03`  | LED color (Green component in RGB) |
+| `0x04`  | LED color (Blue component in RGB) |
+| `0x05`  | Milliseconds needed to complete one blink/breath cycle (high 8 bits) |
+| `0x06`  | Milliseconds needed to complete one blink/breath cycle (low 8 bits) |
+| `0x07`  | Milliseconds the LED is on during one blink/breath cycle (high 8 bits) |
+| `0x08`  | Milliseconds the LED is on during one blink/breath cycle (low 8 bits) |
+| `0x09`  | Checksum of data in the range 0x00 - 0x08 (high 8 bits) |
+| `0x0a`  | Checksum of data in the range 0x00 - 0x08 (low 8 bits) |
 
 The checksum is a 16-bit value obtained by summing all the data at the corresponding positions as unsigned integers.
 
@@ -302,25 +302,24 @@ By writing 12 bytes to the address `0x00 + LED_ID`, we can modify the current st
 
 | Address | Meaning of Corresponding Data |
 |---------|--------------------------------|
-| 0x00    | LED ID |
-| 0x01    | Constant: 0xa0 |
-| 0x02    | Constant: 0x01 |
-| 0x03    | Constant: 0x00 |
-| 0x04    | Constant: 0x00 |
-| 0x05    | If the value is 1, it indicates modifying brightness. <br/>If the value is 2, it indicates modifying color. <br/>If the value is 3, it indicates setting the on/off state.<br/>If the value is 4 / 5, it indicates setting the blink / breath state. |
-| 0x06    | First parameter |
-| 0x07    | Second parameter |
-| 0x08    | Third parameter |
-| 0x09    | Fourth parameter |
-| 0x0a    | Checksum of data in the range 0x01 - 0x09 (high 8 bits) |
-| 0x0b    | Checksum of data in the range 0x01 - 0x09 (low 8 bits) |
+| `0x00`  | LED ID |
+| `0x01`  | Constant: 0xa0 |
+| `0x02`  | Constant: 0x01 |
+| `0x03`  | Constant: 0x00 |
+| `0x04`  | Constant: 0x00 |
+| `0x05`  | If the value is 1, it indicates modifying brightness<br/> If the value is 2, it indicates modifying color<br/> If the value is 3, it indicates setting the on/off state<br/> If the value is 4, it indicates setting the blink state<br/> If the value is 5, it indicates setting the breath state |
+| `0x06`  | First parameter |
+| `0x07`  | Second parameter |
+| `0x08`  | Third parameter |
+| `0x09`  | Fourth parameter |
+| `0x0a`  | Checksum of data in the range 0x01 - 0x09 (high 8 bits) |
+| `0x0b`  | Checksum of data in the range 0x01 - 0x09 (low 8 bits) |
 
-For the four different modification types at address 0x05:
-
-- If we need to modify brightness, the first parameter contains brightness information.
-- If we need to modify color, the first three parameters represent RGB information.
-- If we need to toggle the on/off state, the first parameter is either 0 or 1, representing off or on, respectively.
-- If we need to set the blink / breath state, the first two parameters together form a 16-bit unsigned integer in big-endian order, representing the number of milliseconds needed to complete one blink / breath cycle. The next two parameters, also in big-endian order, represent the number of milliseconds the LED is on during one blink / breath cycle.
+For the four different modification types at address `0x05`:
+- If we need to modify **brightness**, the first parameter contains brightness information.
+- If we need to modify **color**, the first three parameters represent RGB information.
+- If we need to toggle the **on/off state**, the first parameter is either 0 (off) or 1 (on).
+- If we need to set the **blink/breath state**, the first two parameters together form a 16-bit unsigned integer in big-endian order, representing the number of milliseconds needed to complete one blink/breath cycle. The next two parameters, also in big-endian order, represent the time in milliseconds the LED is on during one blink/breath cycle.
 
 Below is an example for turning off and on the power indicator light using `i2cset`:
 
