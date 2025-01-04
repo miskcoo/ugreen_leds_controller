@@ -198,7 +198,7 @@ Please see `scripts/ugreen-leds.conf` for an example.
   cp scripts/ugreen-leds.conf /etc/ugreen-leds.conf
   
   # copy the systemd services 
-  cp scripts/*.service /etc/systemd/system/
+  cp scripts/systemd/*.service /etc/systemd/system/
   
   systemctl daemon-reload
   
