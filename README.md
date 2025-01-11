@@ -1,9 +1,10 @@
 LED Controller for UGREEN's DX/DXP NAS Series
 ==
 
-UGREEN's DX/DXP NAS Series covers 2 to 8 bay NAS devices with a built-in system based on OpenWRT called `UGOS`.  
+UGREEN's DX/DXP NAS Series covers 2 to 8 bay NAS devices with a built-in system based on OpenWRT called `UGOS` or Debian called `UGOS-Pro`.  
 Debian Linux or dedicated NAS operating systems and appliances are compatible with the hardware, but do not have drivers for the LED lights on the front panel to indicate power, network and hard drive activity.  
-Instead, when using a 3rd party OS with e.g. DX 4600 Pro, only the power indicator light blinks, and the other LEDs are off by default. For the DXP series, all LEDs blink in rolling sequence when non-UGOS systems are running.
+Instead, when using a 3rd party OS with e.g. DX 4600 Pro, only the power indicator light blinks, and the other LEDs are off by default.  
+For the DXP series, all LEDs blink in rolling sequence when non-UGOS systems are running.
 
 This repository
  - Describes the control logic of UGOS for the LED lights on the device front
@@ -55,7 +56,8 @@ ugreen_leds_cli disk4  -color 0 0 255   -blink 400 600
 
 ## Preparation
 
-We communicate with the control chip of the LED via I2C, corresponding to the device with address `0x3a` on *SMBus I801 adapter*. Before proceeding, we need to load the `i2c-dev` module and install the `i2c-tools` tool.
+We communicate with the control chip of the LED via I2C, corresponding to the device with address `0x3a` on *SMBus I801 adapter*.  
+Before proceeding, we need to load the `i2c-dev` module and install the `i2c-tools` tool.
 
 ```
 $ apt install -y i2c-tools
@@ -130,9 +132,9 @@ ugreen_leds_cli power -on -color 0 0 255 -brightness 128 -status
 
 There are three methods to install the module:
 
-- Run `cd kmod && make` to build the kernel module, and then load it with `sudo insmod led-ugreen.ko`.
+- **A)** Run `cd kmod && make` to build the kernel module, and then load it with `sudo insmod led-ugreen.ko`.
 
-- Alternatively, you can install it with dkms:
+- **B)** Alternatively, you can install it with dkms:
 
   ```bash
   cp -r kmod /usr/src/led-ugreen-0.1
@@ -140,7 +142,7 @@ There are three methods to install the module:
   dkms build -m led-ugreen -v 0.1 && dkms install -m led-ugreen -v 0.1
   ```
 
-- You can also directly install the package [here](https://github.com/miskcoo/ugreen_leds_controller/releases).
+- **C)** You can also directly install the `.deb` package [here](https://github.com/miskcoo/ugreen_leds_controller/releases).
 
 After loading the `led-ugreen` module, you need to run `scripts/ugreen-probe-leds`, and you can see LEDs in `/sys/class/leds`.
 
@@ -173,17 +175,20 @@ To see how to map the disk LEDs to correct disk slots, please read the [Disk Map
 The configure file of `ugreen-diskiomon` and `ugreen-netdevmon` is `/etc/ugreen-led.conf`.  
 Please see `scripts/ugreen-leds.conf` for an example.
 
-- Edit `/etc/modules-load.d/ugreen-led.conf` and add the following lines:
+- Add the following lines to `/etc/modules-load.d/ugreen-led.conf`
   ```
+  cat > /etc/modules-load.d/ugreen-led.conf << EOF
   i2c-dev
   led-ugreen
   ledtrig-oneshot
   ledtrig-netdev
+  EOF
   ```
 
 - Install the `smartctl` tool: `apt install smartmontools`
 
-- Install the kernel module by one of the three methods mentioned above. For example, directly install [the deb package](https://github.com/miskcoo/ugreen_leds_controller/releases).
+- Install the kernel module by one of the three methods mentioned above.  
+  For example, directly install [the deb package](https://github.com/miskcoo/ugreen_leds_controller/releases).
 
 - Copy files in the `scripts` directory: 
   ```bash
@@ -198,7 +203,7 @@ Please see `scripts/ugreen-leds.conf` for an example.
   cp scripts/ugreen-leds.conf /etc/ugreen-leds.conf
   
   # copy the systemd services 
-  cp scripts/*.service /etc/systemd/system/
+  cp scripts/systemd/*.service /etc/systemd/system/
   
   systemctl daemon-reload
   

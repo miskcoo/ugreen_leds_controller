@@ -1,0 +1,13 @@
+[Unit]
+Description=UGREEN LED initial hardware probing service
+After=systemd-modules-load.service
+Requires=systemd-modules-load.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ugreen-probe-leds
+RemainAfterExit=true
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target

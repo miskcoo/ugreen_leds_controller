@@ -1,13 +1,11 @@
 [Unit]
 Description=UGREEN LEDs daemon for monitoring diskio and blinking corresponding LEDs
-After=systemd-modules-load.service
-Requires=systemd-modules-load.service
+After=ugreen-probe-leds.service
+Requires=ugreen-probe-leds.service
 
 [Service]
-ExecStartPre=/usr/bin/ugreen-probe-leds
 ExecStart=/usr/bin/ugreen-diskiomon
 StandardOutput=journal
 
 [Install]
 WantedBy=multi-user.target
-
