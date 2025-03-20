@@ -3,7 +3,7 @@
 set -e
 set -x
 
-pkgver="0.2"
+pkgver="0.3"
 pkgname="led-ugreen-utils"
 drivername="led-ugreen"
 
@@ -33,7 +33,7 @@ done
 
 # systemd file
 mkdir -p $pkgname/etc/systemd/system
-cp scripts/*.service $pkgname/etc/systemd/system/
+cp scripts/systemd/*.service $pkgname/etc/systemd/system/
 # cp scripts/ugreen-ledmon@.service $pkgname/etc/systemd/system/
 
 # example config file
@@ -44,8 +44,8 @@ g++ -std=c++17 -O2 scripts/blink-disk.cpp -o ugreen-blink-disk
 cp ugreen-blink-disk $pkgname/usr/bin
 
 # compile the disk standby monitor
-g++ -std=c++17 -O2 scripts/check-standby.cpp -o ugreen-check-standby
-cp ugreen-check-standby $pkgname/usr/bin
+#g++ -std=c++17 -O2 scripts/check-standby.cpp -o ugreen-check-standby
+#cp ugreen-check-standby $pkgname/usr/bin
 
 # change to root 
 chown -R root:root $pkgname/

@@ -3,7 +3,7 @@
 set -e
 set -x
 
-pkgver="0.2"
+pkgver="0.3"
 pkgname="led-ugreen-dkms"
 drivername="led-ugreen"
 
