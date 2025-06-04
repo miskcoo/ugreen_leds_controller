@@ -277,7 +277,9 @@ if [ "$CHECK_SMART" = true ]; then
             /usr/sbin/smartctl -H /dev/${dev} -n standby,1 &> /dev/null
             RET=$?
 
-            if [[ $RET -gt 1 ]]; then
+            # check return code for critical errors (any bit set except bit 5)
+            # possible return bits set: https://invent.kde.org/system/kpmcore/-/merge_requests/28
+            if (( $RET & ~32 )); then
                 echo "$COLOR_SMART_FAIL" > /sys/class/leds/$led/color
                 echo Disk failure detected on /dev/$dev at $(date +%Y-%m-%d' '%H:%M:%S)
                 continue
