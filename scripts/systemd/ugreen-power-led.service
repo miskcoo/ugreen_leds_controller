@@ -1,0 +1,11 @@
+[Unit]
+Description=UGREEN LEDs daemon for configuring power LED
+After=ugreen-probe-leds.service
+Requires=ugreen-probe-leds.service
+
+[Service]
+ExecStart=/usr/bin/ugreen-power-led
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target
