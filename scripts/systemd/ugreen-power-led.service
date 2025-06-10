@@ -4,7 +4,9 @@ After=ugreen-probe-leds.service
 Requires=ugreen-probe-leds.service
 
 [Service]
+Type=oneshot
 ExecStart=/usr/bin/ugreen-power-led
+RemainAfterExit=true
 StandardOutput=journal
 
 [Install]
