@@ -210,11 +210,13 @@ Please see `scripts/ugreen-leds.conf` for an example.
   # change enp2s0 to the network device you want to monitor
   systemctl start ugreen-netdevmon@enp2s0 
   systemctl start ugreen-diskiomon
+  systemctl start ugreen-power-led
   
   # if you confirm that everything works well, 
   # run the command below to make the service start at boot
   systemctl enable ugreen-netdevmon@enp2s0 
   systemctl enable ugreen-diskiomon
+  systemctl enable ugreen-power-led
   ```
 
 - (_Optional_) To reduce the CPU usage of blinking LEDs when disks are active, you can enter the `scripts` directory and do the following things:

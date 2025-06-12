@@ -1,0 +1,30 @@
+#!/usr/bin/bash
+
+# use variables from config file (unRAID specific)
+if [[ -f /boot/config/plugins/ugreenleds-driver/settings.cfg ]]; then
+    source /boot/config/plugins/ugreenleds-driver/settings.cfg
+fi
+
+# load environment variables
+if [[ -f /etc/ugreen-leds.conf ]]; then
+    source /etc/ugreen-leds.conf
+fi
+
+# Blink settings for the power LED
+# * none: no blinking
+# * breath <delay_on> <delay_off>: breathing blink
+# * blink <delay_on> <delay_off>: blinking
+BLINK_TYPE_POWER=${BLINK_TYPE_POWER:="none"}
+
+# brighness of the power LED
+BRIGHTNESS_POWER=${BRIGHTNESS_POWER:=255}
+
+# color of the power LED
+COLOR_POWER=${COLOR_POWER:="255 255 255"}
+
+# initialize LEDs
+if [[ -d /sys/class/leds/power ]]; then
+    echo "$BLINK_TYPE_POWER" > /sys/class/leds/power/blink_type
+    echo "$BRIGHTNESS_POWER" > /sys/class/leds/power/brightness
+    echo "$COLOR_POWER" > /sys/class/leds/power/color
+fi
