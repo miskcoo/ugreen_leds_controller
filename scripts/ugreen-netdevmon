@@ -60,13 +60,14 @@ function set_netdev_normal_color() {
 
         # Split colors
         IFS=' '
-        read -ra channels_low <<< $CHECK_LINK_SPEED_DYNAMIC_COLOR_LOW
-        read -ra channels_high <<< $CHECK_LINK_SPEED_DYNAMIC_COLOR_HIGH
+        read -r red_low green_low blue_low <<< $CHECK_LINK_SPEED_DYNAMIC_COLOR_LOW
+        read -r red_high green_high blue_high <<< $CHECK_LINK_SPEED_DYNAMIC_COLOR_HIGH
 
         # Calculate colors and create new string
-        red=$(bc -l <<< "scale=0; ${channels_low[0]} + $percentage * (${channels_high[0]} - ${channels_low[0]})")
-        green=$(bc -l <<< "scale=0; ${channels_low[1]} + $percentage * (${channels_high[1]} - ${channels_low[1]})")
-        blue=$(bc -l <<< "scale=0; ${channels_low[2]} + $percentage * (${channels_high[2]} - ${channels_low[2]})")
+        # Division by 1 is required because otherwise bc does not respect the scale parameter
+        red=$(bc -l <<< "scale=0; $red_low + $percentage * ($red_high - $red_low)/1")
+        green=$(bc -l <<< "scale=0; $green_low + $percentage * ($green_high - $green_low)/1")
+        blue=$(bc -l <<< "scale=0; $blue_low + $percentage * ($blue_high - $blue_low)/1")
         color="$red $green $blue"
     elif [[ $CHECK_LINK_SPEED == true ]]; then
         case $(cat /sys/class/net/$netdev_name/speed) in
