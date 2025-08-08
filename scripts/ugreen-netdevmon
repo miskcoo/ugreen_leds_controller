@@ -56,7 +56,7 @@ function set_netdev_normal_color() {
     if [[ $CHECK_LINK_SPEED_DYNAMIC == true ]]; then
         # Get speed and percentage of set speeds
         speed=$(cat /sys/class/net/$netdev_name/speed)
-        percentage=$(bc -l <<< "$speed - $CHECK_LINK_SPEED_DYNAMIC_SPEED_LOW) / ($CHECK_LINK_SPEED_DYNAMIC_SPEED_HIGH - $CHECK_LINK_SPEED_DYNAMIC_SPEED_LOW)")
+        percentage=$(bc -l <<< "($speed - $CHECK_LINK_SPEED_DYNAMIC_SPEED_LOW) / ($CHECK_LINK_SPEED_DYNAMIC_SPEED_HIGH - $CHECK_LINK_SPEED_DYNAMIC_SPEED_LOW)")
 
         # Split colors
         IFS=' '
