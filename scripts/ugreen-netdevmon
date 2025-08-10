@@ -33,6 +33,12 @@ CHECK_NETDEV_INTERVAL=${CHECK_NETDEV_INTERVAL:=60}
 CHECK_GATEWAY_CONNECTIVITY=${CHECK_GATEWAY_CONNECTIVITY:=false} 
 CHECK_LINK_SPEED=${CHECK_LINK_SPEED:=false} 
 
+CHECK_LINK_SPEED_DYNAMIC=${CHECK_LINK_SPEED_DYNAMIC:=false}
+CHECK_LINK_SPEED_DYNAMIC_COLOR_LOW=${CHECK_LINK_SPEED_DYNAMIC_COLOR_LOW:="255 0 0"}
+CHECK_LINK_SPEED_DYNAMIC_COLOR_HIGH=${CHECK_LINK_SPEED_DYNAMIC_COLOR_HIGH:="0 255 0"}
+CHECK_LINK_SPEED_DYNAMIC_SPEED_LOW=${CHECK_LINK_SPEED_DYNAMIC_SPEED_LOW:=0}
+CHECK_LINK_SPEED_DYNAMIC_SPEED_HIGH=${CHECK_LINK_SPEED_DYNAMIC_SPEED_HIGH:=10000}
+
 led="netdev"
 netdev_name=$1
 echo netdev > /sys/class/leds/$led/trigger
@@ -47,7 +53,23 @@ echo $BRIGHTNESS_NETDEV_LED > /sys/class/leds/$led/brightness
 function set_netdev_normal_color() {
     color=$COLOR_NETDEV_NORMAL
 
-    if [[ $CHECK_LINK_SPEED == true ]]; then
+    if [[ $CHECK_LINK_SPEED_DYNAMIC == true ]]; then
+        # Get speed and percentage of set speeds
+        speed=$(cat /sys/class/net/$netdev_name/speed)
+        percentage=$(bc -l <<< "($speed - $CHECK_LINK_SPEED_DYNAMIC_SPEED_LOW) / ($CHECK_LINK_SPEED_DYNAMIC_SPEED_HIGH - $CHECK_LINK_SPEED_DYNAMIC_SPEED_LOW)")
+
+        # Split colors
+        IFS=' '
+        read -r red_low green_low blue_low <<< $CHECK_LINK_SPEED_DYNAMIC_COLOR_LOW
+        read -r red_high green_high blue_high <<< $CHECK_LINK_SPEED_DYNAMIC_COLOR_HIGH
+
+        # Calculate colors and create new string
+        # Division by 1 is required because otherwise bc does not respect the scale parameter
+        red=$(bc -l <<< "scale=0; $red_low + $percentage * ($red_high - $red_low)/1")
+        green=$(bc -l <<< "scale=0; $green_low + $percentage * ($green_high - $green_low)/1")
+        blue=$(bc -l <<< "scale=0; $blue_low + $percentage * ($blue_high - $blue_low)/1")
+        color="$red $green $blue"
+    elif [[ $CHECK_LINK_SPEED == true ]]; then
         case $(cat /sys/class/net/$netdev_name/speed) in
             100)   color=${COLOR_NETDEV_LINK_100:=$COLOR_NETDEV_NORMAL};;
             1000)  color=${COLOR_NETDEV_LINK_1000:=$COLOR_NETDEV_NORMAL};;
