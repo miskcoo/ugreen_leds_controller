@@ -193,7 +193,7 @@ Please see `scripts/ugreen-leds.conf` for an example.
 - Copy files in the `scripts` directory: 
   ```bash
   # copy the scripts
-  scripts=(ugreen-diskiomon ugreen-netdevmon ugreen-probe-leds)
+  scripts=(ugreen-diskiomon ugreen-netdevmon ugreen-probe-leds ugreen-power-led)
   for f in ${scripts[@]}; do
       chmod +x "scripts/$f"
       cp "scripts/$f" /usr/bin
