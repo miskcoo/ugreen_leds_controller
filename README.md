@@ -172,7 +172,7 @@ To see how to map the disk LEDs to correct disk slots, please read the [Disk Map
 
 #### Start at Boot (for Debian 12)
 
-The configure file of `ugreen-diskiomon` and `ugreen-netdevmon` is `/etc/ugreen-led.conf`.  
+The configure file of `ugreen-diskiomon` and `ugreen-netdevmon` is `/etc/ugreen-leds.conf`.  
 Please see `scripts/ugreen-leds.conf` for an example.
 
 - Add the following lines to `/etc/modules-load.d/ugreen-led.conf`
