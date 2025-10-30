@@ -1,6 +1,6 @@
 PACKAGE_NAME="led-ugreen"
-PACKAGE_VERSION="0.3"
-MAKE[0]="make KERNELRELEASE=${kernelver}"
+PACKAGE_VERSION="#MODULE_VERSION#"
+MAKE[0]="make KERNELRELEASE=\${kernelver}"
 CLEAN="make clean"
 BUILT_MODULE_NAME[0]="led-ugreen"
 DEST_MODULE_LOCATION[0]="/updates/dkms"

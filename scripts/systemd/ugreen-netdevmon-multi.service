@@ -1,0 +1,14 @@
+[Unit]
+Description=UGREEN LEDs daemon for monitoring multiple network interfaces
+After=ugreen-probe-leds.service network-online.target
+Requires=ugreen-probe-leds.service
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/ugreen-netdevmon-multi
+Restart=on-failure
+RestartSec=10s
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target
