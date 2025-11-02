@@ -1,0 +1,20 @@
+Source: led-ugreen-dkms
+Section: kernel
+Priority: optional
+Maintainer: Yuhao Zhou <miskcoo@gmail.com>
+Build-Depends: debhelper-compat (= 13), dh-dkms, dkms
+Standards-Version: 4.6.2
+Homepage: https://github.com/miskcoo/ugreen_leds_controller
+
+Package: led-ugreen-dkms
+Architecture: all
+Depends: ${misc:Depends}, dkms
+Recommends: i2c-tools
+Provides: led-ugreen-kernel
+Description: UGREEN NAS LED driver (DKMS kernel module)
+ A reverse-engineered LED driver for UGREEN NAS devices.
+ This package contains the kernel module source with DKMS support for
+ automatic rebuilding when the kernel is updated.
+ .
+ The module provides sysfs interface for LED control and integrates
+ with the kernel LED subsystem, supporting triggers like netdev and oneshot.

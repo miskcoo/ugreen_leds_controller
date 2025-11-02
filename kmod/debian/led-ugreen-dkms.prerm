@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+# Remove module autoload configuration on purge
+if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
+    rm -f /etc/modules-load.d/led-ugreen.conf
+fi
+
+#DEBHELPER#
+
+exit 0

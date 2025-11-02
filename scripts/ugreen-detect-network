@@ -1,0 +1,37 @@
+#!/usr/bin/bash
+
+# UGREEN network interface detection script
+# Outputs available physical ethernet interfaces
+
+set -e
+
+echo "=== UGREEN Network Interface Detection ==="
+echo ""
+
+# Find all physical ethernet interfaces
+interfaces=$(ls /sys/class/net/ | grep -E '^(eth|enp|eno|enx)')
+
+if [ -z "$interfaces" ]; then
+    echo "No physical ethernet interfaces found."
+    exit 1
+fi
+
+echo "Available ethernet interfaces:"
+echo ""
+
+for iface in $interfaces; do
+    # Get interface details
+    speed=$(cat /sys/class/net/$iface/speed 2>/dev/null || echo "unknown")
+    operstate=$(cat /sys/class/net/$iface/operstate 2>/dev/null || echo "unknown")
+    address=$(ip addr show $iface | grep 'inet ' | awk '{print $2}' | head -1 || echo "no IP")
+
+    echo "  $iface:"
+    echo "    State: $operstate"
+    echo "    Speed: ${speed} Mbps"
+    echo "    IP: $address"
+    echo ""
+done
+
+# Suggest primary interface
+primary=$(echo "$interfaces" | head -1)
+echo "Suggested primary interface: $primary"

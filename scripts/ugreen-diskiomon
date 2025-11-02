@@ -153,10 +153,10 @@ done <<< "$(disk_enumerating_string)"
 # initialize LEDs
 declare -A dev_to_led_map
 for i in "${!led_map[@]}"; do
-    led=${led_map[i]} 
+    led=${led_map[i]}
     if [[ -d /sys/class/leds/$led ]]; then
         echo oneshot > /sys/class/leds/$led/trigger
-        echo 1 > /sys/class/leds/$led/invert
+        echo ${LED_INVERT:=0} > /sys/class/leds/$led/invert
         echo 100 > /sys/class/leds/$led/delay_on
         echo 100 > /sys/class/leds/$led/delay_off
         echo "$COLOR_DISK_HEALTH" > /sys/class/leds/$led/color

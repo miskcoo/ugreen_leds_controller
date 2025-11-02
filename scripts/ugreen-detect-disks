@@ -1,0 +1,46 @@
+#!/usr/bin/bash
+
+# UGREEN disk mapping detection script
+# Outputs disk-to-LED mapping based on selected method
+
+set -e
+
+MAPPING_METHOD=${1:-ata}
+
+echo "=== UGREEN Disk Mapping Detection ==="
+echo "Method: $MAPPING_METHOD"
+echo ""
+
+case "$MAPPING_METHOD" in
+    ata)
+        echo "ATA mapping (ataX -> diskX):"
+        for i in {1..8}; do
+            ata_dev="ata$i"
+            disk=$(ls -l /sys/block/ 2>/dev/null | grep "$ata_dev" | awk '{print $9}' | head -1)
+            if [ ! -z "$disk" ]; then
+                serial=$(lsblk -ndo SERIAL /dev/$disk 2>/dev/null || echo "N/A")
+                model=$(lsblk -ndo MODEL /dev/$disk 2>/dev/null || echo "N/A")
+                echo "  disk$i <- $ata_dev <- /dev/$disk (S/N: $serial, Model: $model)"
+            fi
+        done
+        ;;
+    hctl)
+        echo "HCTL mapping (H:C:T:L -> diskX):"
+        lsblk -S -x hctl -o HCTL,NAME,SERIAL,MODEL,SIZE | head -9 | tail -8 | while read line; do
+            echo "  $line"
+        done
+        ;;
+    serial)
+        echo "Serial number mapping (requires manual configuration):"
+        echo "  Edit /etc/ugreen-leds.conf and set:"
+        echo "  DISK_SERIAL=\"SN1 SN2 SN3 SN4 ...\""
+        echo ""
+        echo "Available disks:"
+        lsblk -S -o NAME,SERIAL,MODEL,SIZE
+        ;;
+esac
+
+echo ""
+echo "To verify mapping after installation:"
+echo "  - Watch disk LEDs during I/O: dd if=/dev/sdX of=/dev/null bs=1M count=100"
+echo "  - Check logs: journalctl -u ugreen-diskiomon -f"

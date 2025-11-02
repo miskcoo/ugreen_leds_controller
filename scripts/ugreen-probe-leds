@@ -2,7 +2,35 @@
 
 set -e
 
+# Load i2c-dev module
 { lsmod | grep i2c_dev ; } || modprobe -v i2c-dev
+
+# Ensure led-ugreen module is built for current kernel
+KERNEL_VERSION=$(uname -r)
+MODULE_PATH="/lib/modules/${KERNEL_VERSION}/updates/dkms/led-ugreen.ko"
+
+if [ ! -f "$MODULE_PATH" ] && [ ! -f "${MODULE_PATH}.xz" ] && [ ! -f "${MODULE_PATH}.zst" ]; then
+    echo "Module led-ugreen not found for kernel ${KERNEL_VERSION}, attempting DKMS build..."
+
+    # Get DKMS module version
+    DKMS_VERSION=$(dkms status led-ugreen | grep -oP 'led-ugreen/\K[^,]+' | head -n1)
+
+    if [ -n "$DKMS_VERSION" ]; then
+        echo "Building led-ugreen/${DKMS_VERSION} for kernel ${KERNEL_VERSION}..."
+        dkms install led-ugreen/${DKMS_VERSION} -k ${KERNEL_VERSION} || {
+            echo "ERROR: Failed to build DKMS module for current kernel"
+            echo "Please install kernel headers: apt install linux-headers-${KERNEL_VERSION}"
+            exit 1
+        }
+        echo "DKMS module built successfully"
+    else
+        echo "ERROR: DKMS module led-ugreen not found in DKMS tree"
+        echo "Please reinstall the led-ugreen-dkms package"
+        exit 1
+    fi
+fi
+
+# Load led-ugreen module
 { lsmod | grep led_ugreen ; } || modprobe -v led-ugreen
 
 i2c_dev=$(i2cdetect -l | grep "SMBus I801 adapter" | grep -Po "i2c-\d+")

@@ -1,0 +1,14 @@
+led-ugreen-dkms (0.3-1) unstable; urgency=medium
+
+  * Refactor to proper dh-dkms packaging
+  * Fix version consistency (0.3)
+  * Use debhelper for automated builds
+  * Change architecture to 'all' (source-only)
+
+ -- Yuhao Zhou <miskcoo@gmail.com>  Tue, 29 Oct 2025 12:00:00 +0000
+
+led-ugreen-dkms (0.3-0) unstable; urgency=medium
+
+  * Previous manual packaging version
+
+ -- Yuhao Zhou <miskcoo@gmail.com>  Sun, 20 Oct 2025 12:00:00 +0000

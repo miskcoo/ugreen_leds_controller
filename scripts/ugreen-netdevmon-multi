@@ -1,0 +1,153 @@
+#!/usr/bin/bash
+
+# UGREEN multi-interface network monitor
+# Monitors all physical ethernet interfaces and controls network LED
+
+# Function for cleanup
+exit-ugreen-netdevmon-multi() {
+    if [[ -f "/var/run/ugreen-netdevmon-multi.lock" ]]; then
+        rm "/var/run/ugreen-netdevmon-multi.lock"
+    fi
+}
+
+trap 'exit-ugreen-netdevmon-multi' EXIT
+
+# Check if already running
+if [[ -f "/var/run/ugreen-netdevmon-multi.lock" ]]; then
+    echo "ugreen-netdevmon-multi already running!"
+    exit 1
+fi
+touch /var/run/ugreen-netdevmon-multi.lock
+
+# Load configuration
+if [[ -f /etc/ugreen-leds.conf ]]; then
+    source /etc/ugreen-leds.conf
+fi
+
+# Network LED settings
+NETDEV_BLINK_TX=${NETDEV_BLINK_TX:=1}
+NETDEV_BLINK_RX=${NETDEV_BLINK_RX:=1}
+NETDEV_BLINK_INTERVAL=${NETDEV_BLINK_INTERVAL:=200}
+COLOR_NETDEV_NORMAL=${COLOR_NETDEV_NORMAL:="255 165 0"}
+BRIGHTNESS_NETDEV_LED=${BRIGHTNESS_NETDEV_LED:=255}
+CHECK_NETDEV_INTERVAL=${CHECK_NETDEV_INTERVAL:=60}
+CHECK_LINK_SPEED=${CHECK_LINK_SPEED:=false}
+CHECK_LINK_SPEED_DYNAMIC=${CHECK_LINK_SPEED_DYNAMIC:=false}
+
+led="netdev"
+
+# Detect all physical ethernet interfaces
+get_physical_interfaces() {
+    ls /sys/class/net/ | grep -E '^(eth|enp|eno|enx)' | while read iface; do
+        # Check if it's a physical device (not virtual)
+        if [ -e "/sys/class/net/$iface/device" ]; then
+            echo "$iface"
+        fi
+    done
+}
+
+# Initialize LED
+if [[ -d /sys/class/leds/$led ]]; then
+    modprobe ledtrig-netdev 2>/dev/null || true
+    echo netdev > /sys/class/leds/$led/trigger
+    echo $NETDEV_BLINK_TX > /sys/class/leds/$led/tx
+    echo $NETDEV_BLINK_RX > /sys/class/leds/$led/rx
+    echo $NETDEV_BLINK_INTERVAL > /sys/class/leds/$led/interval
+    echo ${LED_INVERT:=0} > /sys/class/leds/$led/invert
+    echo "$COLOR_NETDEV_NORMAL" > /sys/class/leds/$led/color
+    echo $BRIGHTNESS_NETDEV_LED > /sys/class/leds/$led/brightness
+else
+    echo "Network LED not found at /sys/class/leds/$led"
+    exit 1
+fi
+
+echo "UGREEN multi-interface network monitor started"
+
+# Monitor all interfaces
+while true; do
+    interfaces=($(get_physical_interfaces))
+
+    if [ ${#interfaces[@]} -eq 0 ]; then
+        echo "No physical ethernet interfaces found"
+        sleep $CHECK_NETDEV_INTERVAL
+        continue
+    fi
+
+    echo "Monitoring interfaces: ${interfaces[*]}"
+
+    # Find first active interface for LED trigger
+    active_iface=""
+    max_speed=0
+
+    for iface in "${interfaces[@]}"; do
+        operstate=$(cat /sys/class/net/$iface/operstate 2>/dev/null || echo "down")
+
+        if [ "$operstate" = "up" ]; then
+            speed=$(cat /sys/class/net/$iface/speed 2>/dev/null || echo "0")
+
+            # Use interface with highest speed as primary
+            if [ "$speed" -gt "$max_speed" ]; then
+                max_speed=$speed
+                active_iface=$iface
+            fi
+        fi
+    done
+
+    if [ ! -z "$active_iface" ]; then
+        # Set LED trigger to most active interface
+        current_device=$(cat /sys/class/leds/$led/device_name 2>/dev/null || echo "")
+
+        if [ "$current_device" != "$active_iface" ]; then
+            echo "Switching to interface: $active_iface (${max_speed}Mbps)"
+            echo $active_iface > /sys/class/leds/$led/device_name
+            echo 1 > /sys/class/leds/$led/link
+        fi
+
+        # Update color based on link speed if enabled
+        if [ "$CHECK_LINK_SPEED" = "true" ] || [ "$CHECK_LINK_SPEED_DYNAMIC" = "true" ]; then
+            if [ "$CHECK_LINK_SPEED_DYNAMIC" = "true" ]; then
+                # Calculate dynamic color
+                low_speed=${CHECK_LINK_SPEED_DYNAMIC_SPEED_LOW:-0}
+                high_speed=${CHECK_LINK_SPEED_DYNAMIC_SPEED_HIGH:-10000}
+                low_color=(${CHECK_LINK_SPEED_DYNAMIC_COLOR_LOW:-255 0 0})
+                high_color=(${CHECK_LINK_SPEED_DYNAMIC_COLOR_HIGH:-0 255 0})
+
+                # Linear interpolation between low and high colors
+                ratio=$(awk -v speed="$max_speed" -v low="$low_speed" -v high="$high_speed" \
+                    'BEGIN {print (speed - low) / (high - low)}')
+                ratio=$(awk -v r="$ratio" 'BEGIN {print (r < 0) ? 0 : (r > 1) ? 1 : r}')
+
+                r=$(awk -v ratio="$ratio" -v low="${low_color[0]}" -v high="${high_color[0]}" \
+                    'BEGIN {printf "%.0f", low + ratio * (high - low)}')
+                g=$(awk -v ratio="$ratio" -v low="${low_color[1]}" -v high="${high_color[1]}" \
+                    'BEGIN {printf "%.0f", low + ratio * (high - low)}')
+                b=$(awk -v ratio="$ratio" -v low="${low_color[2]}" -v high="${high_color[2]}" \
+                    'BEGIN {printf "%.0f", low + ratio * (high - low)}')
+
+                echo "$r $g $b" > /sys/class/leds/$led/color
+            else
+                # Fixed color mapping
+                case "$max_speed" in
+                    100)
+                        echo "${COLOR_NETDEV_LINK_100:-0 255 0}" > /sys/class/leds/$led/color
+                        ;;
+                    1000)
+                        echo "${COLOR_NETDEV_LINK_1000:-0 0 255}" > /sys/class/leds/$led/color
+                        ;;
+                    2500)
+                        echo "${COLOR_NETDEV_LINK_2500:-255 255 0}" > /sys/class/leds/$led/color
+                        ;;
+                    10000)
+                        echo "${COLOR_NETDEV_LINK_10000:-255 255 255}" > /sys/class/leds/$led/color
+                        ;;
+                esac
+            fi
+        fi
+    else
+        echo "No active interfaces found"
+        # Clear device trigger
+        echo "" > /sys/class/leds/$led/device_name
+    fi
+
+    sleep $CHECK_NETDEV_INTERVAL
+done
