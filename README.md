@@ -262,7 +262,7 @@ sdh  7:0:0:0    XXJDB1XX
 > [!NOTE]  
 > As far as we know, the mapping between HCTL and the disk serial are stable at each boot (see [#4](https://github.com/miskcoo/ugreen_leds_controller/pull/4) and [#9](https://github.com/miskcoo/ugreen_leds_controller/issues/9)).  
 > However, it has been reported that the exact order is model-dependent (see [#9](https://github.com/miskcoo/ugreen_leds_controller/issues/9)).  
-> - For DX4600 Pro and DXP8800 Plus, the mapping is `X:0:0:0 -> diskX`.  
+> - For DX4600 Pro, DXP4800, and DXP8800 Plus, the mapping is `X:0:0:0 -> diskX`.  
 > - For DXP6800 Pro, `0:0:0:0` and  `1:0:0:0` are mapped to `disk5` and `disk6`, and `2:0:0:0` to `6:0:0:0` are mapped to `disk1` to `disk4`.
 >
 > The script will use `dmidecode` to detect the device model, but I suggest to check the mapping outputed by the script manually.
