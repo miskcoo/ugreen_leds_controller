@@ -5,10 +5,10 @@ exit-ugreen-diskiomon() {
   if [[ -f "/var/run/ugreen-diskiomon.lock" ]]; then
     rm "/var/run/ugreen-diskiomon.lock"
   fi
-  kill $smart_check_pid 2>/dev/null
-  kill $zpool_check_pid 2>/dev/null
-  kill $disk_online_check_pid 2>/dev/null
-  kill $standby_checker_pid 2>/dev/null
+  [[ -n "$smart_check_pid" ]] && kill $smart_check_pid 2>/dev/null
+  [[ -n "$zpool_check_pid" ]] && kill $zpool_check_pid 2>/dev/null
+  [[ -n "$disk_online_check_pid" ]] kill $disk_online_check_pid 2>/dev/null
+  [[ -n "$standby_checker_pid" ]] && kill $standby_checker_pid 2>/dev/null
 }
 
 # check if script is already running
