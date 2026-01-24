@@ -326,7 +326,7 @@ STANDBY_MON_PATH=${STANDBY_MON_PATH:=/usr/bin/ugreen-check-standby}
 STANDBY_CHECK_INTERVAL=${STANDBY_CHECK_INTERVAL:=1}
 if [ -f "${STANDBY_MON_PATH}" ]; then
     ${STANDBY_MON_PATH} ${STANDBY_CHECK_INTERVAL} "${COLOR_DISK_STANDBY}" "${COLOR_DISK_HEALTH}" $(diskiomon_parameters) &
-    standby_checker_pid=$1
+    standby_checker_pid=$!
 fi
 
 # monitor disk activities
