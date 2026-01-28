@@ -7,7 +7,7 @@ exit-ugreen-diskiomon() {
   fi
   [[ -n "$smart_check_pid" ]] && kill $smart_check_pid 2>/dev/null
   [[ -n "$zpool_check_pid" ]] && kill $zpool_check_pid 2>/dev/null
-  [[ -n "$disk_online_check_pid" ]] kill $disk_online_check_pid 2>/dev/null
+  [[ -n "$disk_online_check_pid" ]] && kill $disk_online_check_pid 2>/dev/null
   [[ -n "$standby_checker_pid" ]] && kill $standby_checker_pid 2>/dev/null
 }
 
