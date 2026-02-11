@@ -47,7 +47,9 @@ echo 1 > /sys/class/leds/$led/link
 echo ${NETDEV_BLINK_TX:=1} > /sys/class/leds/$led/tx
 echo ${NETDEV_BLINK_RX:=1} > /sys/class/leds/$led/rx
 echo ${NETDEV_BLINK_INTERVAL:=200} > /sys/class/leds/$led/interval
-echo ${LED_INVERT:=1} > /sys/class/leds/$led/invert
+if [[ -w /sys/class/leds/$led/invert ]]; then
+    echo ${LED_INVERT:=1} > /sys/class/leds/$led/invert
+fi
 echo $COLOR_NETDEV_NORMAL > /sys/class/leds/$led/color
 echo $BRIGHTNESS_NETDEV_LED > /sys/class/leds/$led/brightness
 
