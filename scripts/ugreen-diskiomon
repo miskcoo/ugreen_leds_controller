@@ -9,6 +9,7 @@ exit-ugreen-diskiomon() {
   [[ -n "$zpool_check_pid" ]] && kill $zpool_check_pid 2>/dev/null
   [[ -n "$disk_online_check_pid" ]] && kill $disk_online_check_pid 2>/dev/null
   [[ -n "$standby_checker_pid" ]] && kill $standby_checker_pid 2>/dev/null
+  exit 0
 }
 
 # check if script is already running
@@ -19,7 +20,7 @@ fi
 touch /var/run/ugreen-diskiomon.lock
 
 # trap exit and remove lockfile
-trap 'exit-ugreen-diskiomon' EXIT
+trap 'exit-ugreen-diskiomon' EXIT INT TERM
 
 # use variables from config file (unRAID specific)
 if [[ -f /boot/config/plugins/ugreenleds-driver/settings.cfg ]]; then
