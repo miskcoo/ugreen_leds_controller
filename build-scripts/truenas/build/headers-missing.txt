@@ -1,0 +1,6 @@
+TrueNAS-SCALE-Dragonfish/24.04.2.1
+TrueNAS-SCALE-Dragonfish/24.04.2.2
+TrueNAS-SCALE-Dragonfish/24.04.2.3
+TrueNAS-SCALE-Dragonfish/24.04.2.4
+TrueNAS-SCALE-Dragonfish/24.04.2.5
+TrueNAS-SCALE-ElectricEel/24.10.1
