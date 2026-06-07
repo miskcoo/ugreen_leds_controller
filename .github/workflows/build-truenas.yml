@@ -31,4 +31,4 @@ jobs:
       with:
         commit_message: "Add compiled modules"
         branch: gh-actions
-        file_pattern: 'build-scripts/truenas/build/*/*/led-ugreen.ko'
+        file_pattern: 'build-scripts/truenas/build/*/*/led-ugreen.ko build-scripts/truenas/build/headers-missing.txt'
