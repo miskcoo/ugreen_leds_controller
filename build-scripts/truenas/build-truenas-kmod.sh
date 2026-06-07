@@ -30,6 +30,11 @@ wget -nv "${url_prefix}${update_file}.sig"
 extract_log="${workdir}/extract-truenas-headers.log"
 if ! bash /extract-truenas-headers.sh "${update_file}" . 2>&1 | tee "${extract_log}"; then
     if grep -q "Error: header files missing" "${extract_log}"; then
+        headers_missing_file="${output_root}/headers-missing.txt"
+        touch "${headers_missing_file}"
+        if ! grep -Fxq -- "${version_path}" "${headers_missing_file}"; then
+            printf '%s\n' "${version_path}" >> "${headers_missing_file}"
+        fi
         echo "Header files missing for ${version_path}; skipping because headers match a previous release."
         exit 0
     fi
