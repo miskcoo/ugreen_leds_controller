@@ -61,4 +61,4 @@ EOF
 make
 
 mkdir -p "${output_root}/${version_path}"
-cp ugreen_dx4600_leds_controller/kmod/*.ko "${output_root}/${version_path}"
+cp ./*.ko "${output_root}/${version_path}"
