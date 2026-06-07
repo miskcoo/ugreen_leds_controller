@@ -5,10 +5,11 @@ exit-ugreen-netdevmon() {
   if [[ -f "/var/run/ugreen-netdevmon.lock" ]]; then
     rm "/var/run/ugreen-netdevmon.lock"
   fi
+  exit 0
 }
 
 # trap exit and remove lockfile
-trap 'exit-ugreen-netdevmon' EXIT
+trap 'exit-ugreen-netdevmon' EXIT INT TERM
 
 # check if script is already running
 if [[ -f "/var/run/ugreen-netdevmon.lock" ]]; then

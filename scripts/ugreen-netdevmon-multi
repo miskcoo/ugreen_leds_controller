@@ -8,9 +8,10 @@ exit-ugreen-netdevmon-multi() {
     if [[ -f "/var/run/ugreen-netdevmon-multi.lock" ]]; then
         rm "/var/run/ugreen-netdevmon-multi.lock"
     fi
+    exit 0
 }
 
-trap 'exit-ugreen-netdevmon-multi' EXIT
+trap 'exit-ugreen-netdevmon-multi' EXIT INT TERM
 
 # Check if already running
 if [[ -f "/var/run/ugreen-netdevmon-multi.lock" ]]; then
