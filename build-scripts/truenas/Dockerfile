@@ -11,6 +11,8 @@ RUN set -ex \
                fakeroot \
                wget \
                git \
+               gnupg \
+               squashfs-tools \
     && apt-get clean \
     && rm -rf /tmp/* /var/tmp/*
 
