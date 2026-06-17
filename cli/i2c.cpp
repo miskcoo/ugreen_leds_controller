@@ -14,6 +14,13 @@ i2c_device_t::~i2c_device_t() {
 }
 
 int i2c_device_t::start(const char *filename, uint16_t addr) {
+    // Close any previously opened device so repeated start() calls (e.g. probing
+    // multiple buses to locate the MCU) don't leak file descriptors.
+    if (_fd) {
+        close(_fd);
+        _fd = 0;
+    }
+
     _fd = open(filename, O_RDWR);
 
     if (_fd < 0) {
@@ -81,6 +88,29 @@ int i2c_device_t::write_block_data(uint8_t command, std::vector<uint8_t> data) {
     return rc;
 }
 
+int i2c_device_t::write_smbus_block_data(uint8_t command, std::vector<uint8_t> data) {
+    if (!_fd) return -1;
+
+    uint32_t size = data.size();
+    if (size > I2C_SMBUS_BLOCK_MAX)
+        size = I2C_SMBUS_BLOCK_MAX;
+
+    i2c_smbus_data smbus_data;
+    smbus_data.block[0] = size;
+    for (uint32_t i = 0; i < size; ++i)
+        smbus_data.block[i + 1] = data[i];
+
+    i2c_smbus_ioctl_data ioctl_data;
+    // BLOCK_DATA (not I2C_BLOCK_DATA): the kernel sends a leading count byte the
+    // MCU requires; without it the chip ACKs but ignores the command.
+    ioctl_data.size = I2C_SMBUS_BLOCK_DATA;
+    ioctl_data.read_write = I2C_SMBUS_WRITE;
+    ioctl_data.command = command;
+    ioctl_data.data = &smbus_data;
+
+    return ioctl(_fd, I2C_SMBUS, &ioctl_data);
+}
+
 uint8_t i2c_device_t::read_byte_data(uint8_t command) {
     if (!_fd) return { };
 
@@ -97,4 +127,21 @@ uint8_t i2c_device_t::read_byte_data(uint8_t command) {
     if (rc < 0) return { };
 
     return smbus_data.byte & 0xff;
+}
+
+int i2c_device_t::read_word_data(uint8_t command) {
+    if (!_fd) return -1;
+
+    i2c_smbus_data smbus_data;
+
+    i2c_smbus_ioctl_data ioctl_data;
+    ioctl_data.size = I2C_SMBUS_WORD_DATA;
+    ioctl_data.read_write = I2C_SMBUS_READ;
+    ioctl_data.command = command;
+    ioctl_data.data = &smbus_data;
+
+    if (ioctl(_fd, I2C_SMBUS, &ioctl_data) < 0)
+        return -1;
+
+    return smbus_data.word & 0xffff;
 }

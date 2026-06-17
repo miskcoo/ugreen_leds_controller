@@ -33,8 +33,9 @@ static struct ugreen_led_state *lcdev_to_ugreen_led_state(struct led_classdev *l
 }
 
 static int ugreen_led_change_state(
-    struct i2c_client *client, 
-    u8 led_id, 
+    struct i2c_client *client,
+    u16 chip_id,
+    u8 led_id,
     u8 command,
     u8 param1,
     u8 param2,
@@ -43,6 +44,29 @@ static int ugreen_led_change_state(
 ) {
     // compute the checksum
     u16 cksum = 0xa1 + (u16)command + param1 + param2 + param3 + param4;
+
+    if (chip_id == UGREEN_LED_CHIP_ID_C5B2) {
+        // SMBus block write (kernel prepends the count byte): 11-byte payload
+        // from 0xa0, no leading led_id, checksum low-byte first. Without this
+        // exact framing the chip ACKs but ignores the command (reg 0x80 != 1).
+        u8 buf[11] = {
+            0xa0, 0x01, 0x00, 0x00,
+            command,
+            param1, param2, param3, param4,
+            (u8)(cksum & 0xff),
+            (u8)((cksum >> 8) & 0xff)
+        };
+
+        s32 rc = i2c_smbus_write_block_data(client, led_id, sizeof(buf), buf);
+        if (rc < 0) {
+            pr_err("%s: i2c_smbus_write_block_data failed with id %d,"
+                    "cmd 0x%x, params (0x%x, 0x%x, 0x%x, 0x%x), err %d",
+                    __func__, led_id, command, param1, param2, param3, param4, rc);
+            return rc;
+        }
+
+        return 0;
+    }
 
     // construct the write buffer
     u8 buf[12] = { 
@@ -130,8 +154,9 @@ static bool ugreen_led_get_last_command_status(struct i2c_client *client) {
 }
 
 static int ugreen_led_change_state_robust(
-    struct i2c_client *client, 
-    u8 led_id, 
+    struct i2c_client *client,
+    u16 chip_id,
+    u8 led_id,
     u8 command,
     u8 param1,
     u8 param2,
@@ -146,7 +171,7 @@ static int ugreen_led_change_state_robust(
 
         if (i > 0) pr_debug("retrying %d", i);
 
-        rc = ugreen_led_change_state(client, led_id, command, param1, param2, param3, param4);
+        rc = ugreen_led_change_state(client, chip_id, led_id, command, param1, param2, param3, param4);
         if (rc == 0) {
             usleep_range(1500, 2500);
             if (ugreen_led_get_last_command_status(client)) {
@@ -184,7 +209,7 @@ static void ugreen_led_turn_on_or_off_unlock(struct ugreen_led_array *priv, u8 l
         return;
     }
 
-    int rc = ugreen_led_change_state_robust(priv->client, led_id, 0x03, on ? 1 : 0, 0, 0, 0);
+    int rc = ugreen_led_change_state_robust(priv->client, priv->chip_id, led_id, 0x03, on ? 1 : 0, 0, 0, 0);
     if (rc == 0) {
         priv->state[led_id].status = on ? UGREEN_LED_STATE_ON : UGREEN_LED_STATE_OFF;
     } else if (verbose) {
@@ -200,7 +225,7 @@ static void ugreen_led_set_brightness_unlock(struct ugreen_led_array *priv, u8 l
         ugreen_led_turn_on_or_off_unlock(priv, led_id, false);
     } else {
         if (state->brightness != brightness) {
-            int rc = ugreen_led_change_state_robust(priv->client, led_id, 0x01, brightness, 0, 0, 0);
+            int rc = ugreen_led_change_state_robust(priv->client, priv->chip_id, led_id, 0x01, brightness, 0, 0, 0);
             if (rc == 0) {
                 state->brightness = brightness;
             } else if (verbose) {
@@ -222,7 +247,7 @@ static void ugreen_led_set_color_unlock(struct ugreen_led_array *priv, u8 led_id
     }
 
     if (state->r != r || state->g != g || state->b != b) {
-        int rc = ugreen_led_change_state_robust(priv->client, led_id, 0x02, r, g, b, 0);
+        int rc = ugreen_led_change_state_robust(priv->client, priv->chip_id, led_id, 0x02, r, g, b, 0);
         if (rc == 0) {
             state->r = r;
             state->g = g;
@@ -242,8 +267,8 @@ static void ugreen_led_set_blink_or_breath_unlock(struct ugreen_led_array *priv,
     if (state->t_on == t_on && state->t_cycle == t_cycle && state->status == led_status) {
         rc = 0;
     } else {
-        rc = ugreen_led_change_state_robust(priv->client, led_id, is_blink ? 0x04 : 0x05, 
-            (u8)(t_cycle >> 8), (u8)(t_cycle & 0xff), 
+        rc = ugreen_led_change_state_robust(priv->client, priv->chip_id, led_id, is_blink ? 0x04 : 0x05,
+            (u8)(t_cycle >> 8), (u8)(t_cycle & 0xff),
             (u8)(t_on >> 8), (u8)(t_on & 0xff)
         );
 
@@ -470,6 +495,23 @@ static int ugreen_led_probe(struct i2c_client *client) {
     priv->client = client;
 
     mutex_init(&priv->mutex);
+
+    // Read the MCU chip id (reg 0x5a) to select the write framing.
+    // A failed read (< 0 -> 0) falls through to the legacy framing.
+    s32 chip_id = i2c_smbus_read_word_data(client, UGREEN_LED_REG_CHIP_ID);
+    priv->chip_id = (chip_id < 0) ? 0 : (u16)chip_id;
+    if (priv->chip_id == UGREEN_LED_CHIP_ID_C5B2) {
+        pr_info("chip id 0x%04x: using SMBus block-write framing\n",
+                priv->chip_id);
+    } else if (priv->chip_id == 0) {
+        // No chip id (read failed / register absent): expected on older models.
+        pr_info("no chip id reported: using legacy i2c-block-write framing\n");
+    } else {
+        // Unknown MCU: legacy framing is the safe default, but if it needs
+        // different framing writes fail silently (chip ACKs, reg 0x80 stays !=1).
+        pr_warn("unknown chip id 0x%04x: using legacy i2c-block-write framing; "
+                "LED writes may not work on this model\n", priv->chip_id);
+    }
 
     // probe and initialize leds
     for (int i = 0; i < UGREEN_MAX_LED_NUMBER; ++i) {

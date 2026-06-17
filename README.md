@@ -64,7 +64,28 @@ $ apt install -y i2c-tools
 $ modprobe -v i2c-dev
 ```
 
-Now, we can check if the device located at address `0x3a` of *SMBus I801 adapter* is visible.
+> [!NOTE]
+> **AMD-based models (e.g. UGREEN DXP4800 GT).** On these the LED MCU is not on
+> the Intel *SMBus I801 adapter* but on a **Synopsys DesignWare** I2C controller
+> (ACPI `AMDI0010`), and the MCU reports chip id `0xc5b2` (it needs the
+> SMBus block-write framing this tool selects automatically). The DesignWare
+> controller is supported by the mainline `i2c-designware-platform` /
+> `i2c-designware-core` drivers, but they are **not enabled in every kernel**.
+> If `i2cdetect -l` shows no `Synopsys DesignWare I2C adapter`, make sure the bus
+> driver is available, then load it:
+> ```
+> $ modprobe i2c-designware-platform     # pulls in i2c-designware-core
+> ```
+> - Most general-purpose distros (Debian, Proxmox VE, Arch, Fedora, …) already
+>   build these as modules — the `modprobe` above is all you need.
+> - On kernels that ship them disabled, enable `CONFIG_I2C_DESIGNWARE_CORE=m` and
+>   `CONFIG_I2C_DESIGNWARE_PLATFORM=m` and build the modules for your kernel
+>   (e.g. via DKMS or your distro's out-of-tree module mechanism).
+>
+> Until that bus exists there is no `/dev/i2c-*` exposing `0x3a`, so neither the
+> CLI nor the kernel module can reach the MCU ("fail to open the I2C device").
+
+Now, we can check if the device located at address `0x3a` of *SMBus I801 adapter* (or *Synopsys DesignWare I2C adapter* on AMD models) is visible.
 
 ```
 $ i2cdetect -l
