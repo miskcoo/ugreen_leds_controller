@@ -12,6 +12,9 @@ int ugreen_leds_t::start() {
     if (!fs::exists(I2C_DEV_PATH))
         return -1;
 
+    // Fast path, unchanged from upstream: bind directly to the Intel
+    // "SMBus I801 adapter" without touching any other bus (keeps existing
+    // models' behaviour identical).
     for (const auto& entry : fs::directory_iterator(I2C_DEV_PATH)) {
         if (entry.is_directory()) {
             std::ifstream ifs(entry.path() / "device/name");
@@ -20,12 +23,51 @@ int ugreen_leds_t::start() {
 
             if (line.rfind("SMBus I801 adapter", 0) == 0) {
                 const auto i2c_dev = "/dev/" + entry.path().filename().string();
-                return _i2c.start(i2c_dev.c_str(), UGREEN_LED_I2C_ADDR);
+                if (_i2c.start(i2c_dev.c_str(), UGREEN_LED_I2C_ADDR) != 0)
+                    return -1;
+                _chip_id = read_chip_id();
+                return 0;
             }
         }
     }
 
+    // Fallback for non-I801 buses (e.g. AMD/DesignWare on the DXP4800 GT).
+    // Only reached when no I801 adapter exists, so existing models never enter
+    // here. Accept the bus where 0x3a returns a valid checksummed status frame.
+    for (const auto& entry : fs::directory_iterator(I2C_DEV_PATH)) {
+        if (!entry.is_directory())
+            continue;
+
+        const auto i2c_dev = "/dev/" + entry.path().filename().string();
+        if (_i2c.start(i2c_dev.c_str(), UGREEN_LED_I2C_ADDR) != 0)
+            continue;
+
+        if (!get_status(led_type_t::power).is_available)
+            continue;
+
+        _chip_id = read_chip_id();
+        return 0;
+    }
+
     return -1;
+}
+
+// Read the MCU chip id (register 0x5a) used to select the write framing.
+// A failed read and an absent register both map to 0 (expected on older
+// models) and fall through to the legacy framing.
+uint16_t ugreen_leds_t::read_chip_id() {
+    int id = _i2c.read_word_data(UGREEN_LED_REG_CHIP_ID);
+    uint16_t chip_id = (id < 0) ? 0 : (uint16_t)id;
+
+    if (chip_id != UGREEN_LED_CHIP_ID_C5B2 && chip_id != 0) {
+        // Unknown MCU: legacy framing is the safe default, but if it needs
+        // different framing writes fail silently (chip ACKs, reg 0x80 stays !=1).
+        std::cerr << "Warning: unknown LED MCU chip id 0x" << std::hex << chip_id
+                  << std::dec << "; using legacy framing, LED writes may not work."
+                  << std::endl;
+    }
+
+    return chip_id;
 }
 
 static int compute_checksum(const std::vector<uint8_t>& data, int size) {
@@ -84,6 +126,22 @@ ugreen_leds_t::led_data_t ugreen_leds_t::get_status(led_type_t id) {
 }
 
 int ugreen_leds_t::_change_status(led_type_t id, uint8_t command, std::array<std::optional<uint8_t>, 4> params) {
+    if (_chip_id == UGREEN_LED_CHIP_ID_C5B2) {
+        // SMBus block write; 11-byte payload from 0xa0, checksum low-byte first.
+        std::vector<uint8_t> data {
+            0xa0, 0x01, 0x00, 0x00,
+            command,
+            params[0].value_or(0x00),
+            params[1].value_or(0x00),
+            params[2].value_or(0x00),
+            params[3].value_or(0x00),
+        };
+        int sum = compute_checksum(data, data.size());
+        data.push_back(sum & 0xff);
+        data.push_back((sum >> 8) & 0xff);
+        return _i2c.write_smbus_block_data((uint8_t)id, data);
+    }
+
     std::vector<uint8_t> data {
     //   3c    3b    3a
         0x00, 0xa0, 0x01,
