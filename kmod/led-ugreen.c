@@ -15,6 +15,7 @@
 #include <linux/delay.h>
 #include <linux/leds.h>
 #include <linux/proc_fs.h>
+#include <linux/string.h>
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 #include "led-ugreen.h"
@@ -28,13 +29,55 @@ static bool verbose = false;
 module_param(verbose, bool, 0644);
 MODULE_PARM_DESC(verbose, "Enable verbose output");
 
+static enum ugreen_led_write_protocol write_protocol = UGREEN_LED_WRITE_PROTOCOL_LEGACY;
+
+static const char *ugreen_led_write_protocol_name(enum ugreen_led_write_protocol protocol) {
+    switch (protocol) {
+        case UGREEN_LED_WRITE_PROTOCOL_SMBUS_BLOCK:
+            return "smbus-block";
+        case UGREEN_LED_WRITE_PROTOCOL_LEGACY:
+        default:
+            return "legacy";
+    }
+}
+
+static int ugreen_led_write_protocol_set(const char *val, const struct kernel_param *kp) {
+    enum ugreen_led_write_protocol *protocol = kp->arg;
+
+    if (sysfs_streq(val, "legacy")) {
+        *protocol = UGREEN_LED_WRITE_PROTOCOL_LEGACY;
+        return 0;
+    }
+
+    if (sysfs_streq(val, "smbus-block")) {
+        *protocol = UGREEN_LED_WRITE_PROTOCOL_SMBUS_BLOCK;
+        return 0;
+    }
+
+    return -EINVAL;
+}
+
+static int ugreen_led_write_protocol_get(char *buf, const struct kernel_param *kp) {
+    enum ugreen_led_write_protocol protocol = *(enum ugreen_led_write_protocol *)kp->arg;
+
+    return sprintf(buf, "%s\n", ugreen_led_write_protocol_name(protocol));
+}
+
+static const struct kernel_param_ops ugreen_led_write_protocol_ops = {
+    .set = ugreen_led_write_protocol_set,
+    .get = ugreen_led_write_protocol_get,
+};
+
+module_param_cb(write_protocol, &ugreen_led_write_protocol_ops, &write_protocol, 0444);
+MODULE_PARM_DESC(write_protocol, "Write protocol: legacy or smbus-block");
+
 static struct ugreen_led_state *lcdev_to_ugreen_led_state(struct led_classdev *led_cdev) {
     return container_of(led_cdev, struct ugreen_led_state, cdev);
 }
 
 static int ugreen_led_change_state(
     struct i2c_client *client,
-    u16 chip_id,
+    enum ugreen_led_write_protocol write_protocol,
     u8 led_id,
     u8 command,
     u8 param1,
@@ -45,7 +88,7 @@ static int ugreen_led_change_state(
     // compute the checksum
     u16 cksum = 0xa1 + (u16)command + param1 + param2 + param3 + param4;
 
-    if (chip_id == UGREEN_LED_CHIP_ID_C5B2) {
+    if (write_protocol == UGREEN_LED_WRITE_PROTOCOL_SMBUS_BLOCK) {
         // SMBus block write (kernel prepends the count byte): 11-byte payload
         // from 0xa0, no leading led_id, checksum low-byte first. Without this
         // exact framing the chip ACKs but ignores the command (reg 0x80 != 1).
@@ -155,7 +198,7 @@ static bool ugreen_led_get_last_command_status(struct i2c_client *client) {
 
 static int ugreen_led_change_state_robust(
     struct i2c_client *client,
-    u16 chip_id,
+    enum ugreen_led_write_protocol write_protocol,
     u8 led_id,
     u8 command,
     u8 param1,
@@ -171,7 +214,7 @@ static int ugreen_led_change_state_robust(
 
         if (i > 0) pr_debug("retrying %d", i);
 
-        rc = ugreen_led_change_state(client, chip_id, led_id, command, param1, param2, param3, param4);
+        rc = ugreen_led_change_state(client, write_protocol, led_id, command, param1, param2, param3, param4);
         if (rc == 0) {
             usleep_range(1500, 2500);
             if (ugreen_led_get_last_command_status(client)) {
@@ -209,7 +252,7 @@ static void ugreen_led_turn_on_or_off_unlock(struct ugreen_led_array *priv, u8 l
         return;
     }
 
-    int rc = ugreen_led_change_state_robust(priv->client, priv->chip_id, led_id, 0x03, on ? 1 : 0, 0, 0, 0);
+    int rc = ugreen_led_change_state_robust(priv->client, priv->write_protocol, led_id, 0x03, on ? 1 : 0, 0, 0, 0);
     if (rc == 0) {
         priv->state[led_id].status = on ? UGREEN_LED_STATE_ON : UGREEN_LED_STATE_OFF;
     } else if (verbose) {
@@ -225,7 +268,7 @@ static void ugreen_led_set_brightness_unlock(struct ugreen_led_array *priv, u8 l
         ugreen_led_turn_on_or_off_unlock(priv, led_id, false);
     } else {
         if (state->brightness != brightness) {
-            int rc = ugreen_led_change_state_robust(priv->client, priv->chip_id, led_id, 0x01, brightness, 0, 0, 0);
+            int rc = ugreen_led_change_state_robust(priv->client, priv->write_protocol, led_id, 0x01, brightness, 0, 0, 0);
             if (rc == 0) {
                 state->brightness = brightness;
             } else if (verbose) {
@@ -247,7 +290,7 @@ static void ugreen_led_set_color_unlock(struct ugreen_led_array *priv, u8 led_id
     }
 
     if (state->r != r || state->g != g || state->b != b) {
-        int rc = ugreen_led_change_state_robust(priv->client, priv->chip_id, led_id, 0x02, r, g, b, 0);
+        int rc = ugreen_led_change_state_robust(priv->client, priv->write_protocol, led_id, 0x02, r, g, b, 0);
         if (rc == 0) {
             state->r = r;
             state->g = g;
@@ -267,7 +310,7 @@ static void ugreen_led_set_blink_or_breath_unlock(struct ugreen_led_array *priv,
     if (state->t_on == t_on && state->t_cycle == t_cycle && state->status == led_status) {
         rc = 0;
     } else {
-        rc = ugreen_led_change_state_robust(priv->client, priv->chip_id, led_id, is_blink ? 0x04 : 0x05,
+        rc = ugreen_led_change_state_robust(priv->client, priv->write_protocol, led_id, is_blink ? 0x04 : 0x05,
             (u8)(t_cycle >> 8), (u8)(t_cycle & 0xff),
             (u8)(t_on >> 8), (u8)(t_on & 0xff)
         );
@@ -493,24 +536,21 @@ static int ugreen_led_probe(struct i2c_client *client) {
     }
 
     priv->client = client;
+    priv->write_protocol = write_protocol;
 
     mutex_init(&priv->mutex);
 
-    // Read the MCU chip id (reg 0x5a) to select the write framing.
-    // A failed read (< 0 -> 0) falls through to the legacy framing.
+    // Read the MCU chip id (reg 0x5a) for diagnostics only. The chip id is not
+    // unique to one write framing; use write_protocol to choose the backend.
     s32 chip_id = i2c_smbus_read_word_data(client, UGREEN_LED_REG_CHIP_ID);
     priv->chip_id = (chip_id < 0) ? 0 : (u16)chip_id;
-    if (priv->chip_id == UGREEN_LED_CHIP_ID_C5B2) {
-        pr_info("chip id 0x%04x: using SMBus block-write framing\n",
-                priv->chip_id);
-    } else if (priv->chip_id == 0) {
-        // No chip id (read failed / register absent): expected on older models.
-        pr_info("no chip id reported: using legacy i2c-block-write framing\n");
+    if (priv->chip_id == 0) {
+        pr_info("no chip id reported; write_protocol=%s\n",
+                ugreen_led_write_protocol_name(priv->write_protocol));
     } else {
-        // Unknown MCU: legacy framing is the safe default, but if it needs
-        // different framing writes fail silently (chip ACKs, reg 0x80 stays !=1).
-        pr_warn("unknown chip id 0x%04x: using legacy i2c-block-write framing; "
-                "LED writes may not work on this model\n", priv->chip_id);
+        pr_info("chip id 0x%04x; write_protocol=%s\n",
+                priv->chip_id,
+                ugreen_led_write_protocol_name(priv->write_protocol));
     }
 
     // probe and initialize leds

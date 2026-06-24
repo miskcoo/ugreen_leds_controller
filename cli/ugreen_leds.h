@@ -20,18 +20,22 @@
 // #define UGREEN_LED_I2C_DEV   "/dev/i2c-1"
 #define UGREEN_LED_I2C_ADDR  0x3a
 
-// The MCU reports a chip id at register 0x5a. The value 0xc5b2 identifies the
-// MCU in the UGREEN DXP4800 GT and AI NAS iDX6011 Pro (UGREEN's factory driver
-// calls this part "iDX601x") and requires SMBus block-write framing; other
-// models report a different/absent id and use the legacy i2c-block-write
-// framing. Constants are named after the measured id, not the vendor part name.
+// The MCU reports a chip id at register 0x5a. The value 0xc5b2 identifies a
+// broad MCU family used by multiple UGREEN LED protocol variants, so it must
+// not be used to choose the write framing.
 #define UGREEN_LED_REG_CHIP_ID    0x5a
 #define UGREEN_LED_CHIP_ID_C5B2   0xc5b2
 
 class ugreen_leds_t {
 
+    enum class write_protocol_t {
+        legacy,
+        smbus_block,
+    };
+
     i2c_device_t _i2c;
     uint16_t _chip_id = 0;
+    write_protocol_t _write_protocol = write_protocol_t::legacy;
 
 public:
 
@@ -53,7 +57,7 @@ public:
     };
 
 public:
-    int start();
+    int start(const char *write_protocol = nullptr);
 
     led_data_t get_status(led_type_t id);
     int set_onoff(led_type_t id, uint8_t status);
@@ -65,6 +69,7 @@ public:
     bool is_last_modification_successful();
 
 private:
+    write_protocol_t detect_write_protocol(const char *write_protocol);
     uint16_t read_chip_id();
     int _set_blink_or_breath(uint8_t command, led_type_t id, uint16_t t_on, uint16_t t_off);
     int _change_status(led_type_t id, uint8_t command, std::array<std::optional<uint8_t>, 4> params);

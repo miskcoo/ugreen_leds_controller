@@ -67,9 +67,11 @@ $ modprobe -v i2c-dev
 > [!NOTE]
 > **AMD-based models (e.g. UGREEN DXP4800 GT).** On these the LED MCU is not on
 > the Intel *SMBus I801 adapter* but on a **Synopsys DesignWare** I2C controller
-> (ACPI `AMDI0010`), and the MCU reports chip id `0xc5b2` (it needs the
-> SMBus block-write framing this tool selects automatically). The DesignWare
-> controller is supported by the mainline `i2c-designware-platform` /
+> (ACPI `AMDI0010`). Some models on this bus need the SMBus block-write framing
+> used by UGREEN's `leds-mcu.ko`.
+> The kernel module and CLI use explicit protocol controls, and both fall back
+> to legacy by default.
+> The DesignWare controller is supported by the mainline `i2c-designware-platform` /
 > `i2c-designware-core` drivers, but they are **not enabled in every kernel**.
 > If `i2cdetect -l` shows no `Synopsys DesignWare I2C adapter`, make sure the bus
 > driver is available, then load it:
@@ -115,12 +117,24 @@ $ i2cdetect -y 1
 
 Use `cd cli && make` to build the command-line tool, and `ugreen_leds_cli` to modify the LED states (requires root permissions).
 
+The CLI uses the legacy write protocol by default. For models that need SMBus
+block-write framing, pass `-write-protocol smbus-block`, or set
+`UGREEN_LEDS_WRITE_PROTOCOL` to `legacy` or `smbus-block`:
+
+```bash
+ugreen_leds_cli all -write-protocol smbus-block -on
+UGREEN_LEDS_WRITE_PROTOCOL=smbus-block ugreen_leds_cli all -on
+```
+
 ```
 Usage: ugreen_leds_cli  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]
                     [-color R G B] [-brightness BRIGHTNESS] [-status]
+                    [-write-protocol legacy|smbus-block]
 
        LED_NAME:    separated by white space, possible values are
                     { power, netdev, disk[1-8], all }.
+       -write-protocol: select the LED write protocol. If omitted, the CLI
+                    checks UGREEN_LEDS_WRITE_PROTOCOL, then uses legacy.
        -on / -off:  turn on / off corresponding LEDs.
        -blink / -breath:  set LED to the blink / breath mode. This
                     mode keeps the LED on for T_ON millseconds and then
@@ -166,6 +180,14 @@ There are three methods to install the module:
 - **C)** You can also directly install the `.deb` package [here](https://github.com/miskcoo/ugreen_leds_controller/releases).
 
 After loading the `led-ugreen` module, you need to run `scripts/ugreen-probe-leds`, and you can see LEDs in `/sys/class/leds`.
+
+The module uses the legacy 12-byte I2C block protocol by default. To use the
+SMBus block-write backend, load the module with `write_protocol=smbus-block`
+before running `scripts/ugreen-probe-leds`:
+
+```bash
+modprobe led-ugreen write_protocol=smbus-block
+```
 
 Below is an example of setting color, brightness, and blink of the `power` LED:
 
@@ -326,7 +348,9 @@ $ i2cget -y 0x01 0x3a 0x81 i 0x0b 0x02 0xb4 0xff 0x00 0xff 0x03 0xe8 0x01 0x90 0
 
 ### Change Status
 
-By writing 12 bytes to the address `0x00 + LED_ID`, we can modify the current status of the corresponding LED. The meaning of these 12 bytes is as follows:
+The default legacy protocol (`write_protocol=legacy`) modifies the current status of the corresponding LED by writing 12 bytes to the address `0x00 + LED_ID`. Models that use UGREEN's `leds-mcu.ko` protocol instead use a slightly different write logic (`write_protocol=smbus-block`), which sends the same logical LED commands with SMBus block-write framing. The block-write framing for this MCU family was first worked out by [@klein0r](https://github.com/klein0r) for the iDX6011 Pro in [klein0r/ugreen_leds_controller](https://github.com/klein0r/ugreen_leds_controller).
+
+For the legacy protocol, the meaning of these 12 bytes is as follows:
 
 | Address | Meaning of Corresponding Data |
 |---------|--------------------------------|
@@ -361,4 +385,4 @@ $ i2cset -y 0x01 0x3a 0x00  0x00 0xa0 0x01 0x00 0x00 0x03 0x00 0x00 0x00 0x00 0x
 
 ## Acknowledgement
 
-ChatGPT, [this V2EX post](https://fast.v2ex.com/t/991429), Ghidra 
+ChatGPT, [this V2EX post](https://fast.v2ex.com/t/991429), Ghidra, and [@klein0r](https://github.com/klein0r)'s [ugreen_leds_controller fork](https://github.com/klein0r/ugreen_leds_controller).

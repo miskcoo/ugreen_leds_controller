@@ -3,14 +3,35 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <cstdlib>
 
 #define I2C_DEV_PATH  "/sys/class/i2c-dev/"
 
-int ugreen_leds_t::start() {
+static std::string trim(const std::string& value) {
+    std::size_t first = 0;
+    while (first < value.size() &&
+            (value[first] == ' ' || value[first] == '\t' ||
+             value[first] == '\n' || value[first] == '\r')) {
+        ++first;
+    }
+
+    std::size_t last = value.size();
+    while (last > first &&
+            (value[last - 1] == ' ' || value[last - 1] == '\t' ||
+             value[last - 1] == '\n' || value[last - 1] == '\r')) {
+        --last;
+    }
+
+    return value.substr(first, last - first);
+}
+
+int ugreen_leds_t::start(const char *write_protocol) {
     namespace fs = std::filesystem;
 
     if (!fs::exists(I2C_DEV_PATH))
         return -1;
+
+    _write_protocol = detect_write_protocol(write_protocol);
 
     // Fast path, unchanged from upstream: bind directly to the Intel
     // "SMBus I801 adapter" without touching any other bus (keeps existing
@@ -52,18 +73,41 @@ int ugreen_leds_t::start() {
     return -1;
 }
 
-// Read the MCU chip id (register 0x5a) used to select the write framing.
-// A failed read and an absent register both map to 0 (expected on older
-// models) and fall through to the legacy framing.
+ugreen_leds_t::write_protocol_t ugreen_leds_t::detect_write_protocol(const char *write_protocol) {
+    const char *source = "command-line";
+    const char *value_ptr = write_protocol;
+
+    if (!value_ptr || trim(value_ptr).empty()) {
+        source = "UGREEN_LEDS_WRITE_PROTOCOL";
+        value_ptr = std::getenv("UGREEN_LEDS_WRITE_PROTOCOL");
+    }
+
+    if (value_ptr) {
+        std::string value = trim(value_ptr);
+        if (value == "legacy") {
+            return write_protocol_t::legacy;
+        }
+        if (value == "smbus-block") {
+            return write_protocol_t::smbus_block;
+        }
+        std::cerr << "Warning: invalid " << source << " write protocol '" << value
+                  << "'; using legacy." << std::endl;
+    }
+
+    return write_protocol_t::legacy;
+}
+
+// Read the MCU chip id (register 0x5a) for diagnostics only. A failed read and
+// an absent register both map to 0 (expected on older models).
 uint16_t ugreen_leds_t::read_chip_id() {
     int id = _i2c.read_word_data(UGREEN_LED_REG_CHIP_ID);
     uint16_t chip_id = (id < 0) ? 0 : (uint16_t)id;
 
     if (chip_id != UGREEN_LED_CHIP_ID_C5B2 && chip_id != 0) {
-        // Unknown MCU: legacy framing is the safe default, but if it needs
-        // different framing writes fail silently (chip ACKs, reg 0x80 stays !=1).
+        const char *protocol_name =
+            (_write_protocol == write_protocol_t::smbus_block) ? "smbus-block" : "legacy";
         std::cerr << "Warning: unknown LED MCU chip id 0x" << std::hex << chip_id
-                  << std::dec << "; using legacy framing, LED writes may not work."
+                  << std::dec << "; write_protocol=" << protocol_name
                   << std::endl;
     }
 
@@ -126,8 +170,11 @@ ugreen_leds_t::led_data_t ugreen_leds_t::get_status(led_type_t id) {
 }
 
 int ugreen_leds_t::_change_status(led_type_t id, uint8_t command, std::array<std::optional<uint8_t>, 4> params) {
-    if (_chip_id == UGREEN_LED_CHIP_ID_C5B2) {
+    if (_write_protocol == write_protocol_t::smbus_block) {
         // SMBus block write; 11-byte payload from 0xa0, checksum low-byte first.
+        // The block-write framing for this MCU family was first worked out by
+        // @klein0r for the iDX6011 Pro
+        // (fork: github.com/klein0r/ugreen_leds_controller).
         std::vector<uint8_t> data {
             0xa0, 0x01, 0x00, 0x00,
             command,
