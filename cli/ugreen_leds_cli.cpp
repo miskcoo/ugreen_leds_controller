@@ -83,9 +83,12 @@ void show_leds_info(ugreen_leds_t &leds_controller, const std::vector<led_type_p
 void show_help() {
     std::cerr 
         << "Usage: ugreen_leds_cli  [LED-NAME...] [-on] [-off] [-(blink|breath) T_ON T_OFF]\n"
-           "                    [-color R G B] [-brightness BRIGHTNESS] [-status]\n\n"
+           "                    [-color R G B] [-brightness BRIGHTNESS] [-status]\n"
+           "                    [-write-protocol legacy|smbus-block]\n\n"
            "       LED_NAME:    separated by white space, possible values are\n"
            "                    { power, netdev, disk[1-8], all }.\n"
+           "       -write-protocol: select the LED write protocol. If omitted, the CLI\n"
+           "                    checks UGREEN_LEDS_WRITE_PROTOCOL, then uses legacy.\n"
            "       -on / -off:  turn on / off corresponding LEDs.\n"
            "       -blink / -breath:  set LED to the blink / breath mode. This \n"
            "                    mode keeps the LED on for T_ON millseconds and then\n"
@@ -138,17 +141,34 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    std::string write_protocol;
+    std::deque<std::string> args;
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "-write-protocol") {
+            if (++i >= argc) {
+                std::cerr << "Err: -write-protocol requires legacy or smbus-block" << std::endl;
+                show_help_and_exit();
+            }
+            write_protocol = argv[i];
+        } else {
+            args.emplace_back(arg);
+        }
+    }
+
+    if (args.empty()) {
+        show_help();
+        return 0;
+    }
+
     ugreen_leds_t leds_controller;
-    if (leds_controller.start() != 0) {
+    const char *write_protocol_arg = write_protocol.empty() ? nullptr : write_protocol.c_str();
+    if (leds_controller.start(write_protocol_arg) != 0) {
         std::cerr << "Err: fail to open the I2C device." << std::endl;
         std::cerr << "Please check that (1) you have the root permission; " << std::endl;
         std::cerr << "              and (2) the i2c-dev module is loaded. " << std::endl;
         return -1;
     }
-
-    std::deque<std::string> args;
-    for (int i = 1; i < argc; ++i)
-        args.emplace_back(argv[i]);
 
     // parse LED names
     std::vector<led_type_pair> leds;
@@ -287,4 +307,3 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-
