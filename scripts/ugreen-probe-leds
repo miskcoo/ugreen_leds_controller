@@ -2,12 +2,69 @@
 
 set -e
 
+SMBUS_BLOCK_WRITE_PROTOCOL_MODELS=(
+    "DXP4800 GT"
+    "iDX6011"
+    "iDX6011 Pro"
+    "iDX6012"
+)
+
+uses_smbus_block_write_protocol() {
+    local model="$1"
+    local candidate
+
+    for candidate in "${SMBUS_BLOCK_WRITE_PROTOCOL_MODELS[@]}"; do
+        if [ "$model" = "$candidate" ]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+find_i2c_dev() {
+    local i2c_dev
+    local bus
+    local chip_id
+
+    i2c_dev=$(i2cdetect -l | grep "SMBus I801 adapter" | grep -Po "i2c-\d+" | head -n1)
+    if [ -n "$i2c_dev" ]; then
+        echo "$i2c_dev"
+        return
+    fi
+
+    if ! uses_smbus_block_write_protocol "$model"; then
+        return
+    fi
+
+    while IFS= read -r i2c_dev; do
+        bus=${i2c_dev#i2c-}
+        if [ -d "/sys/bus/i2c/devices/$i2c_dev/${bus}-003a" ]; then
+            echo "$i2c_dev"
+            return
+        fi
+
+        chip_id=$(i2cget -y "$bus" 0x3a 0x5a w 2>/dev/null || true)
+        if [ "$chip_id" = "0xc5b2" ]; then
+            echo "$i2c_dev"
+            return
+        fi
+    done < <(i2cdetect -l | grep "Synopsys DesignWare I2C adapter" | grep -Po "i2c-\d+")
+}
+
 # Load i2c-dev module
 { lsmod | grep i2c_dev ; } || modprobe -v i2c-dev
 
+model=$(dmidecode -s system-product-name 2>/dev/null || true)
+modprobe_args=(led-ugreen)
+
+if uses_smbus_block_write_protocol "$model"; then
+    modprobe_args+=(write_protocol=smbus-block)
+fi
+
 # Load led-ugreen module
 if ! lsmod | grep -q led_ugreen; then
-    if modprobe -v led-ugreen 2>/dev/null; then
+    if modprobe -v "${modprobe_args[@]}" 2>/dev/null; then
         echo "led-ugreen module loaded successfully"
     else
         # modprobe failed — attempt DKMS build as fallback
@@ -23,7 +80,7 @@ if ! lsmod | grep -q led_ugreen; then
                 exit 1
             }
             echo "DKMS module built successfully"
-            modprobe -v led-ugreen
+            modprobe -v "${modprobe_args[@]}"
         else
             echo "ERROR: led-ugreen module could not be loaded"
             echo "Install via DKMS: dkms install led-ugreen"
@@ -33,9 +90,9 @@ if ! lsmod | grep -q led_ugreen; then
     fi
 fi
 
-i2c_dev=$(i2cdetect -l | grep "SMBus I801 adapter" | grep -Po "i2c-\d+")
+i2c_dev=$(find_i2c_dev || true)
 
-if [ $? = 0 ]; then 
+if [ -n "$i2c_dev" ]; then
         echo "Found I2C device /dev/${i2c_dev}"
         dev_path=/sys/bus/i2c/devices/$i2c_dev/${i2c_dev/i2c-/}-003a
         if [ ! -d $dev_path ]; then
