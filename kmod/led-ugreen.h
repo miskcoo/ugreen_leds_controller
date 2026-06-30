@@ -11,7 +11,13 @@
 #define UGREEN_LED_SLAVE_ADDR       ( 0x3a )
 #define UGREEN_LED_SLAVE_NAME       ( "led-ugreen" )
 
-#define UGREEN_MAX_LED_NUMBER           ( 10 )
+#define UGREEN_POWER_LED_COUNT              ( 1 )
+#define UGREEN_DEFAULT_NETDEV_LED_COUNT     ( 1 )
+#define UGREEN_DEFAULT_PROBE_LED_COUNT      ( 10 )
+#define UGREEN_MAX_NETDEV_LED_COUNT         ( 9 )
+#define UGREEN_MAX_DISK_LED_COUNT           ( 9 )
+#define UGREEN_MAX_LED_NUMBER               \
+    ( UGREEN_POWER_LED_COUNT + UGREEN_MAX_NETDEV_LED_COUNT + UGREEN_MAX_DISK_LED_COUNT )
 #define UGREEN_LED_CHANGE_STATE_RETRY_COUNT   ( 5 )
 
 #define UGREEN_LED_STATE_OFF        ( 0 )
