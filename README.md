@@ -179,34 +179,31 @@ There are three methods to install the module:
 
 - **C)** You can also directly install the `.deb` package [here](https://github.com/miskcoo/ugreen_leds_controller/releases).
 
-After loading the `led-ugreen` module, you need to run `scripts/ugreen-probe-leds`, and you can see LEDs in `/sys/class/leds`.
+Run `scripts/ugreen-probe-leds` after installing the module.
+The script loads `led-ugreen` with the correct options for known models, binds the I2C device, and then LEDs appear in `/sys/class/leds`.
 
-The module uses the legacy 12-byte I2C block protocol by default. To use the
-SMBus block-write backend, load the module with `write_protocol=smbus-block`
-before running `scripts/ugreen-probe-leds`:
+The module uses the legacy 12-byte I2C block protocol by default.
+Models that need the SMBus block-write backend can load the module manually with `write_protocol=smbus-block`:
 
 ```bash
 modprobe led-ugreen write_protocol=smbus-block
 ```
 
-By default, the module auto-detects available LEDs and uses the legacy layout
-`power,netdev,disk1,disk2,...`. If your model has more than one network LED or
-you want to limit how many disk LEDs are exposed, use the `num_netdev_leds` and
-`num_disk_leds` module parameters. For example, the UGREEN iDX6011 Pro has two
-network LEDs followed by six disk LEDs:
+By default, the module auto-detects available LEDs and uses the legacy layout `power,netdev,disk1,disk2,...`.
+If your model has more than one network LED or you want to limit how many disk LEDs are exposed, use the `num_netdev_leds` and `num_disk_leds` module parameters.
+`scripts/ugreen-probe-leds` passes these automatically for known models.
+For example, the UGREEN iDX6011 Pro has two network LEDs followed by six disk LEDs, equivalent to:
 
 ```bash
 modprobe led-ugreen write_protocol=smbus-block num_netdev_leds=2 num_disk_leds=6
 ```
 
-If omitted, `num_netdev_leds` defaults to `1` and `num_disk_leds` defaults to
-the remaining LED IDs in the default 10-ID probe. Each count can be from `0` to
-`9`. LED names are assigned by physical ID: `0` is `power`, the next network
-LEDs are `netdev`, `netdev2`, `netdev3`, and so on, and the remaining LEDs are
-`disk1`, `disk2`, etc. The driver still probes only up to the configured layout
-size and skips IDs that do not report a valid LED state.
+If omitted, `num_netdev_leds` defaults to `1` and `num_disk_leds` defaults to the remaining LED IDs in the default 10-ID probe.
+Each count can be from `0` to `9`.
+LED names are assigned by physical ID: `0` is `power`, the next network LEDs are `netdev`, `netdev2`, `netdev3`, and so on, and the remaining LEDs are `disk1`, `disk2`, etc.
+The driver still probes only up to the configured layout size and skips IDs that do not report a valid LED state.
 
-For persistent module options, put them in `/etc/modprobe.d/led-ugreen.conf`:
+If you load `led-ugreen` outside `scripts/ugreen-probe-leds`, put persistent module options in `/etc/modprobe.d/led-ugreen.conf`:
 
 ```bash
 options led-ugreen write_protocol=smbus-block num_netdev_leds=2 num_disk_leds=6
@@ -245,11 +242,13 @@ Please see `scripts/ugreen-leds.conf` for an example.
   ```
   cat > /etc/modules-load.d/ugreen-led.conf << EOF
   i2c-dev
-  led-ugreen
   ledtrig-oneshot
   ledtrig-netdev
   EOF
   ```
+
+  Do not preload `led-ugreen` here.
+  `ugreen-probe-leds` loads it with model-specific options, such as the iDX6011 Pro LED layout.
 
 - Install the `smartctl` tool: `apt install smartmontools`
 

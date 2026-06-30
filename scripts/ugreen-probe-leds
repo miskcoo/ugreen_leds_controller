@@ -22,6 +22,20 @@ uses_smbus_block_write_protocol() {
     return 1
 }
 
+append_model_led_layout_options() {
+    local model="$1"
+
+    case "$model" in
+        "iDX6011 Pro")
+            modprobe_args+=(num_netdev_leds=2 num_disk_leds=6)
+            ;;
+    esac
+}
+
+led_ugreen_loaded() {
+    lsmod | grep -q "^led_ugreen[[:space:]]"
+}
+
 find_i2c_dev() {
     local i2c_dev
     local bus
@@ -61,9 +75,10 @@ modprobe_args=(led-ugreen)
 if uses_smbus_block_write_protocol "$model"; then
     modprobe_args+=(write_protocol=smbus-block)
 fi
+append_model_led_layout_options "$model"
 
 # Load led-ugreen module
-if ! lsmod | grep -q led_ugreen; then
+if ! led_ugreen_loaded; then
     if modprobe -v "${modprobe_args[@]}" 2>/dev/null; then
         echo "led-ugreen module loaded successfully"
     else
@@ -95,10 +110,10 @@ i2c_dev=$(find_i2c_dev || true)
 if [ -n "$i2c_dev" ]; then
         echo "Found I2C device /dev/${i2c_dev}"
         dev_path=/sys/bus/i2c/devices/$i2c_dev/${i2c_dev/i2c-/}-003a
-        if [ ! -d $dev_path ]; then
-            echo "led-ugreen 0x3a" > /sys/bus/i2c/devices/${i2c_dev}/new_device
-        elif [ "$(cat $dev_path/name)" != "led-ugreen" ]; then
-            echo "ERROR: the device ${i2c_dev/i2c-/}-003a has been registered as $(cat $dev_path/name)"
+        if [ ! -d "$dev_path" ]; then
+            echo "led-ugreen 0x3a" > "/sys/bus/i2c/devices/${i2c_dev}/new_device"
+        elif [ "$(cat "$dev_path/name")" != "led-ugreen" ]; then
+            echo "ERROR: the device ${i2c_dev/i2c-/}-003a has been registered as $(cat "$dev_path/name")"
             exit 1
         fi
 else
