@@ -21,11 +21,11 @@ For the process of understanding this control logic, please refer to [my blog (i
 > - [x] UGREEN DXP4800 ([#41](https://github.com/miskcoo/ugreen_leds_controller/issues/41))
 > - [x] UGREEN DXP4800 Plus ([Gist](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8))
 > - [ ] UGREEN DXP4800 Pro
-> - [ ] UGREEN DXP4800 GT ([#100](https://github.com/miskcoo/ugreen_leds_controller/pull/100))
+> - [ ] UGREEN DXP4800 GT (**Experimental**, available on [`dev-idx601-series`](https://github.com/miskcoo/ugreen_leds_controller/tree/dev-idx601-series), [#100](https://github.com/miskcoo/ugreen_leds_controller/pull/100))
 > - [x] UGREEN DXP6800 Pro ([#7](https://github.com/miskcoo/ugreen_leds_controller/issues/7))
 > - [x] UGREEN DXP8800 Plus ([#1](https://github.com/miskcoo/ugreen_leds_controller/issues/1), [Repo](https://github.com/meyergru/ugreen_dxp8800_leds_controller))
 > - [ ] UGREEN DXP480T Plus ([#6](https://github.com/miskcoo/ugreen_leds_controller/issues/6#issuecomment-2156807225))
-> - [ ] UGREEN iDX6011 (Pro) ([#93](https://github.com/miskcoo/ugreen_leds_controller/issues/93))
+> - [ ] UGREEN iDX6011 (Pro) (**Experimental**, available on [`dev-idx601-series`](https://github.com/miskcoo/ugreen_leds_controller/tree/dev-idx601-series), [#93](https://github.com/miskcoo/ugreen_leds_controller/issues/93), [#104](https://github.com/miskcoo/ugreen_leds_controller/pull/104))
 >
 >**I am not sure whether this module is compatible with other devices.  
 >If you've tested it on other hardware, please feel free to update the list above!**
