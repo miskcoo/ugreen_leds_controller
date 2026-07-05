@@ -71,6 +71,26 @@ static const struct kernel_param_ops ugreen_led_write_protocol_ops = {
 module_param_cb(write_protocol, &ugreen_led_write_protocol_ops, &write_protocol, 0444);
 MODULE_PARM_DESC(write_protocol, "Write protocol: legacy or smbus-block");
 
+#define UGREEN_LED_COUNT_UNSPECIFIED    ( -1 )
+
+static int num_netdev_leds = UGREEN_LED_COUNT_UNSPECIFIED;
+module_param(num_netdev_leds, int, 0444);
+MODULE_PARM_DESC(num_netdev_leds, "Number of network LEDs; default is 1");
+
+static int num_disk_leds = UGREEN_LED_COUNT_UNSPECIFIED;
+module_param(num_disk_leds, int, 0444);
+MODULE_PARM_DESC(num_disk_leds, "Number of disk LEDs; default is remaining LEDs in the default probe");
+
+static const char * const ugreen_led_netdev_names[] = {
+    "netdev", "netdev2", "netdev3", "netdev4", "netdev5",
+    "netdev6", "netdev7", "netdev8", "netdev9"
+};
+
+static const char * const ugreen_led_disk_names[] = {
+    "disk1", "disk2", "disk3", "disk4", "disk5",
+    "disk6", "disk7", "disk8", "disk9"
+};
+
 static struct ugreen_led_state *lcdev_to_ugreen_led_state(struct led_classdev *led_cdev) {
     return container_of(led_cdev, struct ugreen_led_state, cdev);
 }
@@ -553,11 +573,37 @@ static int ugreen_led_probe(struct i2c_client *client) {
                 ugreen_led_write_protocol_name(priv->write_protocol));
     }
 
-    // probe and initialize leds
-    for (int i = 0; i < UGREEN_MAX_LED_NUMBER; ++i) {
+    if (num_netdev_leds < UGREEN_LED_COUNT_UNSPECIFIED ||
+            num_netdev_leds > UGREEN_MAX_NETDEV_LED_COUNT) {
+        dev_err(&client->dev, "invalid num_netdev_leds %d\n", num_netdev_leds);
+        mutex_destroy(&priv->mutex);
+        return -EINVAL;
+    }
 
+    if (num_disk_leds < UGREEN_LED_COUNT_UNSPECIFIED ||
+            num_disk_leds > UGREEN_MAX_DISK_LED_COUNT) {
+        dev_err(&client->dev, "invalid num_disk_leds %d\n", num_disk_leds);
+        mutex_destroy(&priv->mutex);
+        return -EINVAL;
+    }
+
+    // probe and initialize leds
+    int netdev_count = num_netdev_leds == UGREEN_LED_COUNT_UNSPECIFIED ?
+        UGREEN_DEFAULT_NETDEV_LED_COUNT : num_netdev_leds;
+    int default_disk_count = UGREEN_DEFAULT_PROBE_LED_COUNT - UGREEN_POWER_LED_COUNT - netdev_count;
+    if (default_disk_count < 0)
+        default_disk_count = 0;
+    int disk_count = num_disk_leds == UGREEN_LED_COUNT_UNSPECIFIED ?
+        default_disk_count : num_disk_leds;
+    int probe_limit = UGREEN_POWER_LED_COUNT + netdev_count + disk_count;
+
+    for (int i = 0; i < UGREEN_MAX_LED_NUMBER; ++i) {
+        priv->state[i].status = UGREEN_LED_STATE_INVALID;
         priv->state[i].priv = priv;
         priv->state[i].led_id = i;
+    }
+
+    for (int i = 0; i < probe_limit; ++i) {
 
         ugreen_led_get_state_robust(client, i, priv->state + i);
 
@@ -565,7 +611,7 @@ static int ugreen_led_probe(struct i2c_client *client) {
         if (state->status != UGREEN_LED_STATE_INVALID) {
 
             pr_info("probed led id %d, status %d, rgb 0x%02x%02x%02x, "
-                    "brightness %d, t_on %d, t_cycle %d\n", i, 
+                    "brightness %d, t_on %d, t_cycle %d\n", i,
                     state->status, state->r, state->g, state->b,
                     state->brightness, state->t_on, state->t_cycle);
 
@@ -579,21 +625,19 @@ static int ugreen_led_probe(struct i2c_client *client) {
 
     mutex_lock(&priv->mutex);
 
-    // register leds class devices
-    const char *led_name[] = {
-        "power", "netdev", "disk1", "disk2", "disk3", "disk4", "disk5", "disk6", "disk7", "disk8"
-    };
-
-    for (int i = 0; i < UGREEN_MAX_LED_NUMBER; ++i) {
+    for (int i = 0; i < probe_limit; ++i) {
 
         struct ugreen_led_state *state = priv->state + i;
         if (state->status == UGREEN_LED_STATE_INVALID)
             continue;
 
-        // register the brightness control
-        if (i < ARRAY_SIZE(led_name))
-            state->cdev.name = led_name[i];
-        else state->cdev.name = "unknown";
+        if (i == 0) {
+            state->cdev.name = "power";
+        } else if (i <= netdev_count) {
+            state->cdev.name = ugreen_led_netdev_names[i - 1];
+        } else {
+            state->cdev.name = ugreen_led_disk_names[i - netdev_count - 1];
+        }
 
         state->cdev.brightness = state->cdev.brightness;
         state->cdev.max_brightness = 0xff;
@@ -602,9 +646,9 @@ static int ugreen_led_probe(struct i2c_client *client) {
         state->cdev.groups = ugreen_led_groups;
         state->cdev.blink_set = ugreen_led_set_blink;
 
-        if (i == 1) {
+        if (i > 0 && i <= netdev_count) {
             state->cdev.default_trigger = "netdev";
-        } else if (i >= 2) {
+        } else if (i > netdev_count) {
             state->cdev.default_trigger = "oneshot";
         }
 
