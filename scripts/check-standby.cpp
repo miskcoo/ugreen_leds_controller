@@ -32,6 +32,21 @@ std::optional<bool> is_standby_mode(const std::string &device) {
     return args[2] == 0x00;
 }
 
+std::vector<std::string> split(const std::string& str, char delimiter) {
+    std::vector<std::string> tokens;
+    size_t start = 0;
+    size_t end = str.find(delimiter);
+
+    while (end != std::string::npos) {
+        tokens.push_back(str.substr(start, end - start));
+        start = end + 1;
+        end = str.find(delimiter, start);
+    }
+
+    tokens.push_back(str.substr(start));
+    return tokens;
+}
+
 int main(int argc, char *argv[]) {
 
     constexpr int preleading_args = 4;
@@ -49,11 +64,13 @@ int main(int argc, char *argv[]) {
     int checker_sleep_ms = int(std::stod(argv[1]) * 1000);
 
     std::string standby_color = argv[2];
-    std::string normal_color = argv[3];
+    std::string normal_colors_as_string = argv[3];
     std::vector<std::string> block_device_paths;
     std::vector<std::string> led_device_color_paths;
 
-    std::cout << normal_color;
+    std::cout << normal_colors_as_string;
+
+    std::vector<std::string> normal_colors = split(normal_colors_as_string, ',');
 
     for (int i = 0; i < num_devices; i++) {
         std::string block_device = argv[preleading_args + 2 * i];
@@ -94,6 +111,8 @@ int main(int argc, char *argv[]) {
 
                 std::string current_color;
                 std::getline(led_color, current_color);
+
+                std::string normal_color = normal_colors[i];
 
                 if (device_standby[i] && current_color == standby_color) {
                     led_color << normal_color << std::endl;
