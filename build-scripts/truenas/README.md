@@ -23,10 +23,12 @@ Tag outputs are written under `build/tags/<tag>/<version-path>/`, for example:
 build/tags/v0.4-beta/TrueNAS-SCALE-Goldeye/25.10.4/led-ugreen.ko
 ```
 
-To build every supported TrueNAS version for multiple refs:
+To build every supported TrueNAS version for multiple refs, use
+`UGREEN_SOURCE_REFS`. CI builds `master`, the latest stable tag, and the
+current beta tag:
 
 ```
-UGREEN_SOURCE_REFS="master v0.4-beta" bash build-all.sh
+UGREEN_SOURCE_REFS="master v0.3 v0.4-beta" bash build-all.sh
 ```
 
 `master` keeps the existing output layout under `build/<version-path>/`.

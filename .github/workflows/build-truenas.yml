@@ -34,7 +34,7 @@ jobs:
       working-directory: source/build-scripts/truenas
       env:
         TRUENAS_BUILD_ROOT: ${{ github.workspace }}/artifacts/build-scripts/truenas/build
-        UGREEN_SOURCE_REFS: "master v0.4-beta"
+        UGREEN_SOURCE_REFS: "master v0.3 v0.4-beta"
       run: bash build-all.sh
 
     - name: Push results to GitHub

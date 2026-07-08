@@ -39,7 +39,7 @@ For third-party systems, I am using Debian 12 "Bookworm", but you can find some 
 - **TrueNAS**:
   - see [#13](https://github.com/miskcoo/ugreen_leds_controller/issues/13) and [this repo](https://github.com/0x556c79/install-ugreen-leds-controller) (and maybe [here](https://github.com/miskcoo/ugreen_leds_controller/tree/truenas-build/build-scripts/truenas)) for how to build the module
   - look [here](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8) for a script using the CLI tool
-  - check [here](https://github.com/miskcoo/ugreen_leds_controller/tree/gh-actions/build-scripts/truenas/build) for pre-build drivers. The default directories are built from `master`; pre-release tag builds, such as `v0.4-beta`, are under `tags/<tag>/`.
+  - check [here](https://github.com/miskcoo/ugreen_leds_controller/tree/gh-actions/build-scripts/truenas/build) for pre-build drivers. The default directories are built from `master`; tag builds, such as `v0.3` and `v0.4-beta`, are under `tags/<tag>/`.
 - **unRAID**: there is a [plugin](https://forums.unraid.net/topic/168423-ugreen-nas-led-control/) ([related repo](https://github.com/ich777/unraid-ugreenleds-driver/tree/master/source/usr/bin))
 
 Below is an example:  
