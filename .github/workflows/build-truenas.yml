@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
   
   schedule:
     - cron: "0 0 * * *" 
@@ -17,18 +18,29 @@ jobs:
       contents: write
 
     steps:
-    - name: Checkout repository
+    - name: Checkout source repository
+      uses: actions/checkout@v7
+      with:
+        ref: master
+        path: source
+
+    - name: Checkout artifact branch
       uses: actions/checkout@v7
       with:
         ref: gh-actions
+        path: artifacts
 
     - name: Build the kernel modules
-      working-directory: build-scripts/truenas
+      working-directory: source/build-scripts/truenas
+      env:
+        TRUENAS_BUILD_ROOT: ${{ github.workspace }}/artifacts/build-scripts/truenas/build
+        UGREEN_SOURCE_REFS: "master v0.4-beta"
       run: bash build-all.sh
 
     - name: Push results to GitHub
       uses: stefanzweifel/git-auto-commit-action@v7
       with:
+        repository: artifacts
         commit_message: "Add compiled modules"
         branch: gh-actions
-        file_pattern: 'build-scripts/truenas/build/*/*/led-ugreen.ko build-scripts/truenas/build/headers-missing.txt'
+        file_pattern: 'build-scripts/truenas/build'

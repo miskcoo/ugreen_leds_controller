@@ -1,8 +1,11 @@
+#!/usr/bin/env bash
+
 set -x
 set -euo pipefail
 
 # $1 is the TrueNAS version path, e.g. "TrueNAS-SCALE-Goldeye/25.10.4".
 version_path="${1:?missing TrueNAS version path}"
+source_ref="${2:-master}"
 # Version number is the part after the slash, e.g. "25.10.4".
 version="${version_path##*/}"
 
@@ -45,8 +48,10 @@ fi
 mkdir tmp
 dpkg-deb -R linux-headers-truenas-production-amd64_*.deb tmp
 
-git clone https://github.com/miskcoo/ugreen_dx4600_leds_controller.git
-cd ugreen_dx4600_leds_controller/kmod
+git clone https://github.com/miskcoo/ugreen_leds_controller.git
+cd ugreen_leds_controller
+git -c advice.detachedHead=false checkout "$source_ref"
+cd kmod
 
 cat <<EOF > Makefile
 TARGET = led-ugreen
@@ -60,5 +65,11 @@ EOF
 
 make
 
-mkdir -p "${output_root}/${version_path}"
-cp ./*.ko "${output_root}/${version_path}"
+if [ "$source_ref" = "master" ]; then
+    ref_output_root="$output_root"
+else
+    ref_output_root="$output_root/tags/${source_ref#refs/tags/}"
+fi
+
+mkdir -p "${ref_output_root}/${version_path}"
+cp ./*.ko "${ref_output_root}/${version_path}"
