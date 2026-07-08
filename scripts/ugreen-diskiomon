@@ -114,7 +114,7 @@ BRIGHTNESS_DISK_LEDS=${BRIGHTNESS_DISK_LEDS:="255"}
 { lsmod | grep ledtrig_oneshot > /dev/null; } || { modprobe -v ledtrig_oneshot && sleep 2; }
 
 function is_disk_healthy_or_standby() {
-    if [[ "$1" == "$COLOR_DISK_HEALTH" || "$1" == "$COLOR_DISK_STANDBY" ]]; then
+    if [[ "$1" == "$2" || "$1" == "$COLOR_DISK_STANDBY" ]]; then
         return 0  # 0 means successful
     else
         return 1
@@ -140,6 +140,17 @@ function disk_enumerating_string() {
     fi
 }
 
+function color_disk_health() {
+    DISK=$1
+    COLOR=""
+    if [[ -v COLOR_DISK_HEALTH_PER_DISK[$DISK] ]]; then
+        COLOR=${COLOR_DISK_HEALTH_PER_DISK[${DISK}]}
+    else
+        COLOR=$COLOR_DISK_HEALTH
+    fi
+    echo $COLOR
+}
+
 echo Enumerating disks based on $MAPPING_METHOD...
 declare -A dev_map
 while read line
@@ -161,7 +172,8 @@ for i in "${!led_map[@]}"; do
         echo ${LED_INVERT:=1} > /sys/class/leds/$led/invert
         echo 100 > /sys/class/leds/$led/delay_on
         echo 100 > /sys/class/leds/$led/delay_off
-        echo "$COLOR_DISK_HEALTH" > /sys/class/leds/$led/color
+        color_health=$(color_disk_health "$led")
+        echo "$color_health" > /sys/class/leds/$led/color
         echo "$BRIGHTNESS_DISK_LEDS" > /sys/class/leds/$led/brightness
 
         # find corresponding device
@@ -239,8 +251,9 @@ if [ "$CHECK_ZPOOL" = true ]; then
                 if [[ -v "zpool_ledmap[${zpool_dev_name}]" ]]; then
                     led=${zpool_ledmap[$zpool_dev_name]}
                     led_color=$(cat /sys/class/leds/$led/color)
+                    color_health=$(color_disk_health "$led")
 
-                    if ! is_disk_healthy_or_standby "$led_color"; then
+                    if ! is_disk_healthy_or_standby "$led_color" "$color_health"; then
                         continue;
                     fi
 
@@ -252,7 +265,7 @@ if [ "$CHECK_ZPOOL" = true ]; then
                     # ==== To recover from an error, you should restart the script ====
                     ## case "${zpool_dev_state}" in
                     ##     ONLINE)
-                    ##         # echo "$COLOR_DISK_HEALTH" > /sys/class/leds/$led/color
+                    ##         # echo "$color_health" > /sys/class/leds/$led/color
                     ##         ;;
                     ##     *)
                     ##         echo "255 0 0" > /sys/class/leds/$led/color
@@ -276,7 +289,8 @@ if [ "$CHECK_SMART" = true ]; then
         for led in "${!devices[@]}"; do
 
             led_color=$(cat /sys/class/leds/$led/color)
-            if ! is_disk_healthy_or_standby "$led_color"; then
+            color_health=$(color_disk_health "$led")
+            if ! is_disk_healthy_or_standby "$led_color" "$color_health"; then
                 continue;
             fi
 
@@ -307,7 +321,8 @@ fi
             dev=${devices[$led]}
 
             led_color=$(cat /sys/class/leds/$led/color)
-            if ! is_disk_healthy_or_standby "$led_color"; then
+            color_health=$(color_disk_health "$led")
+            if ! is_disk_healthy_or_standby "$led_color" "$color_health"; then
                 continue;
             fi
 
@@ -323,6 +338,19 @@ fi
 disk_online_check_pid=$!
 
 
+function disk_health_parameters() {
+    disk_health_colors=""
+    for i in "${!led_map[@]}"; do
+        led=${led_map[i]}
+        if [[ -v devices[$led] ]]; then
+            color_health=$(color_disk_health "$led")
+            disk_health_colors="${disk_health_colors}$color_health,"
+        fi
+    done
+    disk_health_colors=${disk_health_colors%,}
+    echo $disk_health_colors
+}
+
 diskiomon_parameters() {
     for led in "${!devices[@]}"; do
         echo ${devices[$led]} $led
@@ -333,7 +361,7 @@ diskiomon_parameters() {
 STANDBY_MON_PATH=${STANDBY_MON_PATH:=/usr/bin/ugreen-check-standby}
 STANDBY_CHECK_INTERVAL=${STANDBY_CHECK_INTERVAL:=1}
 if [ -f "${STANDBY_MON_PATH}" ]; then
-    ${STANDBY_MON_PATH} ${STANDBY_CHECK_INTERVAL} "${COLOR_DISK_STANDBY}" "${COLOR_DISK_HEALTH}" $(diskiomon_parameters) &
+    ${STANDBY_MON_PATH} ${STANDBY_CHECK_INTERVAL} "${COLOR_DISK_STANDBY}" "$(disk_health_parameters)" $(diskiomon_parameters) &
     standby_checker_pid=$!
 fi
 
