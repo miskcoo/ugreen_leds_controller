@@ -5,6 +5,7 @@
 #include <string>
 #include <chrono>
 #include <optional>
+#include <limits>
 
 #include <fcntl.h>
 #include <linux/hdreg.h>
@@ -102,7 +103,9 @@ int main(int argc, char *argv[]) {
                     check_failures[i] == 0);
 
             if (!is_standby.has_value()) {
-                ++check_failures[i];
+                // saturate so a persistent failure cannot overflow the counter
+                if (check_failures[i] < std::numeric_limits<long>::max())
+                    ++check_failures[i];
                 continue;
             }
 
@@ -120,7 +123,9 @@ int main(int argc, char *argv[]) {
                         std::cerr << "Failed to open led color file: "
                             << led_device_color_paths[i]
                             << " (will retry every cycle)" << std::endl;
-                    ++led_failures[i];
+                    // saturate so a persistent failure cannot overflow the counter
+                    if (led_failures[i] < std::numeric_limits<long>::max())
+                        ++led_failures[i];
                     continue;
                 }
 
