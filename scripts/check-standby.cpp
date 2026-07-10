@@ -11,18 +11,22 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-std::optional<bool> is_standby_mode(const std::string &device) {
+std::optional<bool> is_standby_mode(const std::string &device, bool log_errors) {
 
     int fd = open(device.c_str(), O_RDONLY | O_NONBLOCK);
     if (fd == -1) {
-        std::cerr << "Failed to open device: " << device << std::endl;
+        if (log_errors)
+            std::cerr << "Failed to open device: " << device
+                << " (will retry every cycle)" << std::endl;
         return std::nullopt;
     }
 
     unsigned char args[4] = { WIN_CHECKPOWERMODE1, 0, 0, 0 };
 
     if (ioctl(fd, HDIO_DRIVE_CMD, args) == -1) {
-        std::cerr << "ioctl failed in checking power mode of " << device << std::endl;
+        if (log_errors)
+            std::cerr << "ioctl failed in checking power mode of " << device
+                << " (will retry every cycle)" << std::endl;
         close(fd);
         return std::nullopt;
     }
@@ -83,30 +87,48 @@ int main(int argc, char *argv[]) {
                 "/sys/class/leds/" + led_device + "/color");
     }
 
-    std::vector<bool> device_valid(num_devices, true);
     std::vector<bool> device_standby(num_devices, false);
+
+    // Failures can be transient (device busy, controller reset), so a failed
+    // check must not permanently disable a device; retry it every cycle.
+    // These counters only suppress repeated logging while a failure persists.
+    std::vector<long> check_failures(num_devices, 0);
+    std::vector<long> led_failures(num_devices, 0);
 
     while (true) {
         for (int i = 0; i < num_devices; i++) {
 
-            if (!device_valid[i]) {
+            auto is_standby = is_standby_mode(block_device_paths[i],
+                    check_failures[i] == 0);
+
+            if (!is_standby.has_value()) {
+                ++check_failures[i];
                 continue;
             }
 
-            auto is_standby = is_standby_mode(block_device_paths[i]);
-
-            if (!is_standby.has_value()) {
-                device_valid[i] = false;
-                continue;
+            if (check_failures[i] > 0) {
+                std::cerr << "Power mode check of " << block_device_paths[i]
+                    << " recovered after " << check_failures[i]
+                    << " failed cycles" << std::endl;
+                check_failures[i] = 0;
             }
 
             if (is_standby.value() != device_standby[i]) {
                 std::fstream led_color(led_device_color_paths[i], std::ios::in | std::ios::out);
                 if (!led_color) {
-                    std::cerr << "Failed to open led color file: " 
-                        << led_device_color_paths[i] << std::endl;
-                    device_valid[i] = false;
+                    if (led_failures[i] == 0)
+                        std::cerr << "Failed to open led color file: "
+                            << led_device_color_paths[i]
+                            << " (will retry every cycle)" << std::endl;
+                    ++led_failures[i];
                     continue;
+                }
+
+                if (led_failures[i] > 0) {
+                    std::cerr << "Opening led color file " << led_device_color_paths[i]
+                        << " recovered after " << led_failures[i]
+                        << " failed cycles" << std::endl;
+                    led_failures[i] = 0;
                 }
 
                 std::string current_color;
