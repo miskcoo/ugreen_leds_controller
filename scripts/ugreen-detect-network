@@ -9,7 +9,7 @@ echo "=== UGREEN Network Interface Detection ==="
 echo ""
 
 # Find all physical ethernet interfaces
-interfaces=$(ls /sys/class/net/ | grep -E '^(eth|enp|eno|enx)')
+interfaces=$(ls /sys/class/net/ | grep -E '^(eth|enp|eno|enx|nic)')
 
 if [ -z "$interfaces" ]; then
     echo "No physical ethernet interfaces found."

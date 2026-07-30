@@ -39,7 +39,7 @@ led="netdev"
 
 # Detect all physical ethernet interfaces
 get_physical_interfaces() {
-    ls /sys/class/net/ | grep -E '^(eth|enp|eno|enx)' | while read iface; do
+    ls /sys/class/net/ | grep -E '^(eth|enp|eno|enx|nic)' | while read iface; do
         # Check if it's a physical device (not virtual)
         if [ -e "/sys/class/net/$iface/device" ]; then
             echo "$iface"
