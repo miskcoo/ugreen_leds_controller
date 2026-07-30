@@ -48,7 +48,7 @@ Below is an example:
 It can be achieved by the following commands:
 ```bash
 ugreen_leds_cli all -off -status
-ugreen_leds_cli power  -color 255 0 255 -blink 400 600 
+ugreen_leds_cli power  -color 255 0 255 -blink 400 600
 sleep 0.1
 ugreen_leds_cli netdev -color 255 0 0   -blink 400 600
 sleep 0.1
@@ -200,7 +200,7 @@ Please see `scripts/ugreen-leds.conf` for an example.
 - Copy files in the `scripts` directory: 
   ```bash
   # copy the scripts
-  scripts=(ugreen-diskiomon ugreen-netdevmon ugreen-probe-leds ugreen-power-led)
+  scripts=(ugreen-{diskiomon,-netdevmon{,-multi},probe-leds,power-led)
   for f in ${scripts[@]}; do
       chmod +x "scripts/$f"
       cp "scripts/$f" /usr/bin
@@ -209,19 +209,19 @@ Please see `scripts/ugreen-leds.conf` for an example.
   # copy the configuration file, you can change it if needed
   cp scripts/ugreen-leds.conf /etc/ugreen-leds.conf
   
-  # copy the systemd services 
+  # copy the systemd services
   cp scripts/systemd/*.service /etc/systemd/system/
   
   systemctl daemon-reload
   
   # change enp2s0 to the network device you want to monitor
-  systemctl start ugreen-netdevmon@enp2s0 
+  systemctl start ugreen-netdevmon@enp2s0
   systemctl start ugreen-diskiomon
   systemctl start ugreen-power-led
   
   # if you confirm that everything works well, 
   # run the command below to make the service start at boot
-  systemctl enable ugreen-netdevmon@enp2s0 
+  systemctl enable ugreen-netdevmon@enp2s0
   systemctl enable ugreen-diskiomon
   systemctl enable ugreen-power-led
   ```
