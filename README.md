@@ -63,7 +63,7 @@ ugreen_leds_cli disk4  -color 0 0 255   -blink 400 600
 
 ## Preparation
 
-We communicate with the control chip of the LED via I2C, corresponding to the device with address `0x3a` on *SMBus I801 adapter*.  
+We communicate with the control chip of the LED via I2C at address `0x3a`. Most models connect it to the *SMBus I801 adapter*, while some hardware revisions such as DXP2800 SUB2 use a *Synopsys DesignWare I2C adapter*. The `ugreen-probe-leds` script detects the responding adapter automatically.
 Before proceeding, we need to load the `i2c-dev` module and install the `i2c-tools` tool.
 
 ```
@@ -71,7 +71,7 @@ $ apt install -y i2c-tools
 $ modprobe -v i2c-dev
 ```
 
-Now, we can check if the device located at address `0x3a` of *SMBus I801 adapter* is visible.
+Now, we can check if the device at address `0x3a` is visible. In this example it is connected to the *SMBus I801 adapter*.
 
 ```
 $ i2cdetect -l
