@@ -51,7 +51,7 @@ chmod +x $pkgname/DEBIAN/postinst
 # Install monitoring scripts
 mkdir -p $pkgname/usr/bin/
 
-script_files=(ugreen-probe-leds ugreen-diskiomon ugreen-power-led ugreen-netdevmon-multi ugreen-detect-disks ugreen-detect-network)
+script_files=(ugreen-detect-disks ugreen-detect-network ugreen-diskiomon ugreen-netdevmon ugreen-netdevmon-multi ugreen-power-led ugreen-probe-leds)
 for f in ${script_files[@]}; do
     cp scripts/$f $pkgname/usr/bin/
     chmod +x $pkgname/usr/bin/$f
@@ -80,4 +80,3 @@ dpkg -b $pkgname
 
 # Cleanup
 rm -rv $pkgname
-

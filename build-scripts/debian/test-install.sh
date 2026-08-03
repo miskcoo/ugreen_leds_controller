@@ -107,7 +107,7 @@ ugreen_leds_cli 2>&1 | head -5 || true
 
 echo ""
 echo "4. Checking utilities..."
-for util in ugreen-probe-leds ugreen-diskiomon ugreen-power-led ugreen-netdevmon-multi ugreen-blink-disk ugreen-check-standby ugreen-detect-disks ugreen-detect-network; do
+for util in ugreen-blink-disk ugreen-check-standby ugreen-detect-disks ugreen-detect-network ugreen-diskiomon ugreen-netdevmon ugreen-netdevmon-multi ugreen-power-led ugreen-probe-leds; do
     if which $util > /dev/null; then
         echo "  ✓ $util"
     else
