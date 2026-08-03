@@ -13,7 +13,7 @@ Package: $pkgname
 Version: $pkgver
 Architecture: all
 Maintainer: Yuhao Zhou <miskcoo@gmail.com>
-Depends: led-ugreen-utils (>= 0.3), led-ugreen-dkms (>= 0.3), debconf (>= 0.5)
+Depends: led-ugreen-utils (>= 0.3), led-ugreen-dkms (>= 0.3), debconf (>= 0.5), systemd, udev
 Homepage: https://github.com/miskcoo/ugreen_leds_controller
 Description: UGREEN NAS LED systemd services
  Systemd service files for automatic UGREEN NAS LED monitoring.
@@ -268,6 +268,10 @@ if [ "$RET" = "true" ]; then
     esac
 fi
 
+# Load packaged units and hotplug rules without requiring a reboot.
+systemctl daemon-reload 2>/dev/null || true
+udevadm control --reload-rules 2>/dev/null || true
+
 db_stop
 
 exit 0
@@ -292,13 +296,37 @@ systemctl disable 'ugreen-netdevmon@*.service' 2>/dev/null || true
 exit 0
 EOF
 
+cat <<'EOF' > $pkgname/DEBIAN/postrm
+#!/usr/bin/bash
+
+set -e
+
+# Drop removed package rules from udev's in-memory ruleset.
+case "$1" in
+    remove|purge)
+        systemctl stop ugreen-diskiomon-refresh.timer 2>/dev/null || true
+        ;;
+esac
+systemctl daemon-reload 2>/dev/null || true
+udevadm control --reload-rules 2>/dev/null || true
+
+exit 0
+EOF
+
 chmod +x $pkgname/DEBIAN/config
 chmod +x $pkgname/DEBIAN/postinst
 chmod +x $pkgname/DEBIAN/prerm
+chmod +x $pkgname/DEBIAN/postrm
 
 # Install systemd service files
 mkdir -p $pkgname/etc/systemd/system
-cp scripts/systemd/*.service $pkgname/etc/systemd/system/
+install -m 0644 scripts/systemd/*.service $pkgname/etc/systemd/system/
+install -m 0644 scripts/systemd/*.timer $pkgname/etc/systemd/system/
+
+# Debounce internal SATA disk add/remove events so the bay-to-device mapping is
+# re-enumerated once after the event burst, without periodic polling.
+mkdir -p $pkgname/usr/lib/udev/rules.d
+install -m 0644 scripts/udev/99-ugreen-diskiomon-hotplug.rules $pkgname/usr/lib/udev/rules.d/
 
 # Set ownership
 chown -R root:root $pkgname/

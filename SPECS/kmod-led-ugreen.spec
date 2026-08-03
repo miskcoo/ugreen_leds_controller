@@ -53,6 +53,7 @@ BuildRequires:  kernel-abi-stablelists
 BuildRequires:  kernel-rpm-macros
 BuildRequires:  redhat-rpm-config
 BuildRequires:  systemd-units
+BuildRequires:  systemd-rpm-macros
 BuildRequires:  gcc-c++
 
 Provides:       kernel-modules >= %{kmod_kernel_version}.%{_arch}
@@ -63,6 +64,7 @@ Requires(postun):       %{_sbindir}/weak-modules
 Requires:       kernel >= %{kmod_kernel_version}
 Requires:       kernel-core-uname-r >= %{kmod_kernel_version}
 Requires:       i2c-tools smartmontools dmidecode
+Requires:       systemd systemd-udev
 
 %description
 This package provides the %{kmod_name} kernel module(s) for ugreen_leds_controller.
@@ -116,8 +118,14 @@ mkdir -p %{buildroot}%{_bindir}/
 %{__install} -m 0755 scripts/ugreen-check-standby %{buildroot}%{_bindir}/
 
 mkdir -p %{buildroot}%{_unitdir}/
-%{__install} -m 0644 scripts/ugreen-netdevmon@.service  %{buildroot}%{_unitdir}/
-%{__install} -m 0644 scripts/ugreen-diskiomon.service   %{buildroot}%{_unitdir}/
+%{__install} -m 0644 scripts/systemd/ugreen-probe-leds.service %{buildroot}%{_unitdir}/
+%{__install} -m 0644 scripts/systemd/ugreen-netdevmon@.service %{buildroot}%{_unitdir}/
+%{__install} -m 0644 scripts/systemd/ugreen-diskiomon.service %{buildroot}%{_unitdir}/
+%{__install} -m 0644 scripts/systemd/ugreen-diskiomon-refresh.service %{buildroot}%{_unitdir}/
+%{__install} -m 0644 scripts/systemd/ugreen-diskiomon-refresh.timer %{buildroot}%{_unitdir}/
+
+mkdir -p %{buildroot}%{_udevrulesdir}/
+%{__install} -m 0644 scripts/udev/99-ugreen-diskiomon-hotplug.rules %{buildroot}%{_udevrulesdir}/
 
 # strip the modules(s)
 find %{buildroot} -type f -name \*.ko -exec %{__strip} --strip-debug \{\} \;
@@ -147,6 +155,8 @@ echo "systemctl start  ugreen-diskiomon.service"
 echo "ls /sys/class/leds"
 echo "Make sure you can see disk1, netdev, power, etc."
 echo "systemctl enable ugreen-diskiomon.service"
+systemctl daemon-reload 2>/dev/null || :
+udevadm control --reload-rules 2>/dev/null || :
 echo
 echo "to uninstall:"
 echo "systemctl stop    ugreen-diskiomon.service"
@@ -207,6 +217,11 @@ fi
 modules=( $(cat "%{dup_module_list}") )
 rm -f "%{dup_module_list}"
 printf '%s\n' "${modules[@]}" | %{_sbindir}/weak-modules --remove-modules $initramfs_opt
+if [ "$1" -eq 0 ]; then
+        systemctl stop ugreen-diskiomon-refresh.timer 2>/dev/null || :
+fi
+systemctl daemon-reload 2>/dev/null || :
+udevadm control --reload-rules 2>/dev/null || :
 
 rmdir "%{dup_state_dir}" 2> /dev/null
 
@@ -225,7 +240,11 @@ exit 0
 %attr(0755, root, root) %{_bindir}/ugreen-blink-disk
 %attr(0755, root, root) %{_bindir}/ugreen-check-standby
 %{_unitdir}/ugreen-netdevmon@.service
+%{_unitdir}/ugreen-probe-leds.service
 %{_unitdir}/ugreen-diskiomon.service
+%{_unitdir}/ugreen-diskiomon-refresh.service
+%{_unitdir}/ugreen-diskiomon-refresh.timer
+%{_udevrulesdir}/99-ugreen-diskiomon-hotplug.rules
 
 %changelog
 * Sat Jun 22 2024 Axel Olmos <ax@olmosconsulting.com> - 0.0-14

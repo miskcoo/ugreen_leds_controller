@@ -5,6 +5,7 @@ Requires=ugreen-probe-leds.service
 
 [Service]
 ExecStart=/usr/bin/ugreen-diskiomon
+RemainAfterExit=yes
 StandardOutput=journal
 
 [Install]

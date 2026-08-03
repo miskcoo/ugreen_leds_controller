@@ -1,0 +1,7 @@
+[Unit]
+Description=Debounce UGREEN disk LED hotplug events
+
+[Timer]
+OnActiveSec=2s
+AccuracySec=100ms
+Unit=ugreen-diskiomon-refresh.service

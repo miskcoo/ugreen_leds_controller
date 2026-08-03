@@ -1,0 +1,6 @@
+[Unit]
+Description=Refresh UGREEN disk LED mapping after hotplug changes
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl try-restart ugreen-diskiomon.service

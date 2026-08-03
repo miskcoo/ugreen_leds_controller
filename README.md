@@ -20,7 +20,7 @@ For the process of understanding this control logic, please refer to [my blog (i
 > - [ ] UGREEN DXP2800 GT
 > - [x] UGREEN DXP4800 ([#41](https://github.com/miskcoo/ugreen_leds_controller/issues/41))
 > - [x] UGREEN DXP4800 Plus ([Gist](https://gist.github.com/Kerryliu/c380bb6b3b69be5671105fc23e19b7e8))
-> - [ ] UGREEN DXP4800 Pro
+> - [x] UGREEN DXP4800 Pro ([#116](https://github.com/miskcoo/ugreen_leds_controller/pull/116))
 > - [ ] UGREEN DXP4800 GT (**Experimental**, available on [v0.4-beta](https://github.com/miskcoo/ugreen_leds_controller/releases/tag/v0.4-beta), [#100](https://github.com/miskcoo/ugreen_leds_controller/pull/100))
 > - [x] UGREEN DXP6800 Pro ([#7](https://github.com/miskcoo/ugreen_leds_controller/issues/7))
 > - [x] UGREEN DXP8800 Plus ([#1](https://github.com/miskcoo/ugreen_leds_controller/issues/1), [Repo](https://github.com/meyergru/ugreen_dxp8800_leds_controller))
@@ -210,7 +210,11 @@ Please see `scripts/ugreen-leds.conf` for an example.
   cp scripts/ugreen-leds.conf /etc/ugreen-leds.conf
   
   # copy the systemd services
-  cp scripts/systemd/*.service /etc/systemd/system/
+  cp scripts/systemd/*.{service,timer} /etc/systemd/system/
+
+  # refresh disk monitoring when an internal SATA disk is added or removed
+  cp scripts/udev/99-ugreen-diskiomon-hotplug.rules /etc/udev/rules.d/
+  udevadm control --reload-rules
   
   systemctl daemon-reload
   
@@ -225,6 +229,12 @@ Please see `scripts/ugreen-leds.conf` for an example.
   systemctl enable ugreen-diskiomon
   systemctl enable ugreen-power-led
   ```
+
+  The udev rule restarts a two-second systemd timer whenever an internal SATA
+  disk is added or removed. Event bursts are coalesced, then the disk-to-bay
+  mapping is re-enumerated once after the event stream quiets. It does not poll for
+  mapping changes. A clean no-disk exit remains refreshable for the next disk add,
+  while a manually stopped `ugreen-diskiomon.service` remains stopped.
 
 - (_Optional_) To reduce the CPU usage of blinking LEDs when disks are active, you can enter the `scripts` directory and do the following things:
   ```bash

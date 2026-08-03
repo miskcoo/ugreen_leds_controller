@@ -1,0 +1,5 @@
+# Re-enumerate bay-to-disk mappings after internal SATA disks are added or removed.
+# Import the cached bus on removal because the device is no longer available to probe.
+# Restarting the timer coalesces event bursts; the service refresh runs after they settle.
+ACTION=="remove", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", IMPORT{db}="ID_BUS"
+ACTION=="add|remove", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", ENV{ID_BUS}=="ata", RUN+="/usr/bin/systemctl --no-block restart ugreen-diskiomon-refresh.timer"
