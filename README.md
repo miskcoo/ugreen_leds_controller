@@ -14,6 +14,7 @@ For the process of understanding this control logic, please refer to [my blog (i
 
 > [!NOTE]
 > Only tested and working on the following devices:
+> - [x] UGREEN DX4600 (CLI color and on/off control; see [validation notes](docs/DX4600.md))
 > - [x] UGREEN DX4600 Pro
 > - [x] UGREEN DX4700+
 > - [x] UGREEN DXP2800 ([#19](https://github.com/miskcoo/ugreen_leds_controller/issues/19))

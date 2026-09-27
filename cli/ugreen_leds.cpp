@@ -1,4 +1,8 @@
 #include "ugreen_leds.h"
+#include "dx4600.h"
+#include <algorithm>
+#include <charconv>
+#include <unistd.h>
 #include <string>
 #include <filesystem>
 #include <fstream>
@@ -6,26 +10,60 @@
 
 #define I2C_DEV_PATH  "/sys/class/i2c-dev/"
 
-int ugreen_leds_t::start() {
+// Numeric order matches the stock DX4600 firmware's adapter scan.
+static int start_controller(i2c_device_t &i2c, bool dx4600,
+                            const std::filesystem::path &adapter_path) {
     namespace fs = std::filesystem;
+    if (!fs::exists(adapter_path)) return -1;
 
-    if (!fs::exists(I2C_DEV_PATH))
-        return -1;
+    std::vector<std::pair<int, fs::path>> candidates;
+    for (const auto &entry : fs::directory_iterator(adapter_path)) {
+        if (!entry.is_directory()) continue;
+        const auto filename = entry.path().filename().string();
+        if (filename.rfind("i2c-", 0) != 0) continue;
+        int number = -1;
+        const auto parsed = std::from_chars(filename.data() + 4,
+                                            filename.data() + filename.size(), number);
+        if (parsed.ec != std::errc() || parsed.ptr != filename.data() + filename.size()
+            || number < 0) continue;
 
-    for (const auto& entry : fs::directory_iterator(I2C_DEV_PATH)) {
-        if (entry.is_directory()) {
-            std::ifstream ifs(entry.path() / "device/name");
-            std::string line;
-            std::getline(ifs, line);
-
-            if (line.rfind("SMBus I801 adapter", 0) == 0) {
-                const auto i2c_dev = "/dev/" + entry.path().filename().string();
-                return _i2c.start(i2c_dev.c_str(), UGREEN_LED_I2C_ADDR);
-            }
+        std::ifstream name_file(entry.path() / "name");
+        if (!name_file.is_open()) name_file.open(entry.path() / "device/name");
+        std::string name;
+        std::getline(name_file, name);
+        const bool i801 = name.rfind("SMBus I801 adapter", 0) == 0;
+        if (!dx4600) {
+            // Preserve the existing selection policy for other models.
+            if (i801) return i2c.start(("/dev/" + filename).c_str(), UGREEN_LED_I2C_ADDR);
+            continue;
         }
+        if (name.rfind("SMBus", 0) == 0 || name.rfind("Synopsys", 0) == 0)
+            candidates.emplace_back(number, entry.path());
     }
-
+    std::sort(candidates.begin(), candidates.end());
+    for (const auto &candidate : candidates) {
+        const auto device = "/dev/" + candidate.second.filename().string();
+        if (i2c.start(device.c_str(), UGREEN_LED_I2C_ADDR) != 0) continue;
+        // Stock UGOS Pro 1.19.1.0126: WORD 0x5a identifies the MCU as 0xc5b2.
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            uint16_t signature = 0;
+            usleep(2000);
+            if (i2c.read_word_data(0x5a, signature) == 0 && signature == 0xc5b2)
+                return 0;
+            usleep(100000);
+        }
+        i2c.close();
+    }
     return -1;
+}
+
+int ugreen_leds_t::start() {
+    try {
+        return start_controller(_i2c, is_dx4600(), I2C_DEV_PATH);
+    } catch (const std::filesystem::filesystem_error &error) {
+        std::cerr << "LED adapter enumeration failed: " << error.what() << std::endl;
+        return -1;
+    }
 }
 
 static int compute_checksum(const std::vector<uint8_t>& data, int size) {

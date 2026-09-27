@@ -1,0 +1,15 @@
+name: CLI tests
+on:
+  push:
+    paths: ['cli/**', 'tests/**', '.github/workflows/cli-test.yml']
+  pull_request:
+    paths: ['cli/**', 'tests/**', '.github/workflows/cli-test.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh tests/test-cli.sh

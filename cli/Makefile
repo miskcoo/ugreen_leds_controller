@@ -1,7 +1,7 @@
 
 CC = g++
 CFLAGS = -I. -O2 -Wall -static
-DEPS = i2c.h ugreen_leds.h
+DEPS = i2c.h ugreen_leds.h dx4600.h
 OBJ = i2c.o ugreen_leds.o 
 
 %.o: %.cpp $(DEPS)

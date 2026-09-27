@@ -1,5 +1,10 @@
 
 #include <unistd.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <cerrno>
+#include "dx4600.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -9,11 +14,12 @@
 
 #include "ugreen_leds.h"
 
-#define MAX_RETRY_COUNT 5
+static bool dx4600_firmware_route = false;
+#define MAX_RETRY_COUNT (dx4600_firmware_route ? 4 : 5)
 #define USLEEP_READ_STATUS_INTERVAL 8000
 #define USLEEP_READ_STATUS_RETRY_INTERVAL 3000
 #define USLEEP_MODIFICATION_INTERVAL 500
-#define USLEEP_MODIFICATION_RETRY_INTERVAL 3000
+#define USLEEP_MODIFICATION_RETRY_INTERVAL (dx4600_firmware_route ? 30000 : 3000)
 #define USLEEP_MODIFICATION_QUERY_RESULT_INTERVAL 2000
 
 static std::map<std::string, ugreen_leds_t::led_type_t> led_name_map = {
@@ -137,6 +143,38 @@ int main(int argc, char *argv[])
         show_help();
         return 0;
     }
+
+    if (argc == 2 && (std::string(argv[1]) == "--help" || std::string(argv[1]) == "-help")) {
+        show_help();
+        return 0;
+    }
+
+    // Hold one lock across the entire read/modify/ACK transaction, including
+    // status-only invocations. The kernel releases it on every process exit.
+    const int lock_fd = open("/run/ugreen-leds-cli.lock",
+                             O_CREAT | O_RDWR | O_CLOEXEC | O_NOFOLLOW, 0600);
+    struct stat lock_stat {};
+    if (lock_fd < 0 || fstat(lock_fd, &lock_stat) != 0 ||
+        !S_ISREG(lock_stat.st_mode) || lock_stat.st_uid != geteuid()) {
+        std::cerr << "Err: cannot safely open LED controller lock" << std::endl;
+        if (lock_fd >= 0) close(lock_fd);
+        return 1;
+    }
+    bool locked = false;
+    for (int attempt = 0; attempt < 100; ++attempt) {
+        if (flock(lock_fd, LOCK_EX | LOCK_NB) == 0) {
+            locked = true;
+            break;
+        }
+        if (errno != EWOULDBLOCK && errno != EAGAIN && errno != EINTR) break;
+        usleep(20000);
+    }
+    if (!locked) {
+        std::cerr << "Err: LED controller busy" << std::endl;
+        close(lock_fd);
+        return 1;
+    }
+    dx4600_firmware_route = is_dx4600();
 
     ugreen_leds_t leds_controller;
     if (leds_controller.start() != 0) {

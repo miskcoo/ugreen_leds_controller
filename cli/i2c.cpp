@@ -10,22 +10,22 @@
 
 
 i2c_device_t::~i2c_device_t() {
-    if (_fd) close(_fd);
+    close();
 }
 
 int i2c_device_t::start(const char *filename, uint16_t addr) {
-    _fd = open(filename, O_RDWR);
+    close();
+    _fd = open(filename, O_RDWR | O_CLOEXEC);
 
     if (_fd < 0) {
         int rc = _fd;
-        _fd = 0;
+        _fd = -1;
         return rc;
     }
 
     int rc = ioctl(_fd, I2C_SLAVE, addr);
     if (rc < 0) {
-        close(_fd);
-        _fd = 0;
+        close();
         return rc;
     }
 
@@ -33,7 +33,7 @@ int i2c_device_t::start(const char *filename, uint16_t addr) {
 };
 
 std::vector<uint8_t> i2c_device_t::read_block_data(uint8_t command, uint32_t size) {
-    if (!_fd) return { };
+    if (_fd < 0) return { };
 
     if (size > I2C_SMBUS_BLOCK_MAX)
         return { };
@@ -59,7 +59,7 @@ std::vector<uint8_t> i2c_device_t::read_block_data(uint8_t command, uint32_t siz
 }
 
 int i2c_device_t::write_block_data(uint8_t command, std::vector<uint8_t> data) {
-    if (!_fd) return -1;
+    if (_fd < 0) return -1;
 
     uint32_t size = data.size();
     if (size > I2C_SMBUS_BLOCK_MAX)
@@ -82,7 +82,7 @@ int i2c_device_t::write_block_data(uint8_t command, std::vector<uint8_t> data) {
 }
 
 uint8_t i2c_device_t::read_byte_data(uint8_t command) {
-    if (!_fd) return { };
+    if (_fd < 0) return { };
 
     i2c_smbus_data smbus_data;
 
@@ -97,4 +97,22 @@ uint8_t i2c_device_t::read_byte_data(uint8_t command) {
     if (rc < 0) return { };
 
     return smbus_data.byte & 0xff;
+}
+
+void i2c_device_t::close() {
+    if (_fd >= 0) ::close(_fd);
+    _fd = -1;
+}
+
+int i2c_device_t::read_word_data(uint8_t command, uint16_t &data) {
+    if (_fd < 0) return -1;
+    i2c_smbus_data value {};
+    i2c_smbus_ioctl_data request {};
+    request.size = I2C_SMBUS_WORD_DATA;
+    request.read_write = I2C_SMBUS_READ;
+    request.command = command;
+    request.data = &value;
+    if (ioctl(_fd, I2C_SMBUS, &request) < 0) return -1;
+    data = value.word;
+    return 0;
 }
