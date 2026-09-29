@@ -31,14 +31,18 @@ struct ugreen_led_state {
     u16 t_on, t_cycle;
 
     u8 led_id;
-    struct led_classdev cdev;
     struct ugreen_led_array *priv;
+
+    /* Keep cdev last. Its size is decided by the kernel's CONFIG_LEDS_*
+     * settings, not by this module, so anything placed after it is exposed
+     * if the two ever disagree. */
+    struct led_classdev cdev;
 };
 
 struct ugreen_led_array {
     struct i2c_client *client;
     struct mutex mutex;
-    struct ugreen_led_state state[UGREEN_MAX_LED_NUMBER];
+    struct ugreen_led_state *state[UGREEN_MAX_LED_NUMBER];
 };
 
 
