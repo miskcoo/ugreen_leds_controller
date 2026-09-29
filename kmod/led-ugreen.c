@@ -429,18 +429,21 @@ static DEVICE_ATTR_RW(blink_type);
 static ssize_t status_show(struct device *dev, struct device_attribute *attr, char *buf) {
 
     struct led_classdev *cdev = dev_get_drvdata(dev);
-    struct ugreen_led_state state = *lcdev_to_ugreen_led_state(cdev);
+    struct ugreen_led_state *state = lcdev_to_ugreen_led_state(cdev);
 
-    mutex_lock(&state.priv->mutex);
-    int status = state.status;
+    mutex_lock(&state->priv->mutex);
+
+    int status = state->status;
     if (status >= ARRAY_SIZE(ugreen_led_state_name)) {
         status = UGREEN_LED_STATE_INVALID;
     }
-    ssize_t size = sprintf(buf, "%s %d %d %d %d %d %d\n", 
-            ugreen_led_state_name[state.status], (int)state.brightness, 
-            (int)state.r, (int)state.g, (int)state.b,
-            (int)state.t_on, (int)(state.t_cycle - state.t_on));
-    mutex_unlock(&state.priv->mutex);
+
+    ssize_t size = sprintf(buf, "%s %d %d %d %d %d %d\n",
+            ugreen_led_state_name[status], (int)state->brightness,
+            (int)state->r, (int)state->g, (int)state->b,
+            (int)state->t_on, (int)(state->t_cycle - state->t_on));
+
+    mutex_unlock(&state->priv->mutex);
 
     return size;
 }
