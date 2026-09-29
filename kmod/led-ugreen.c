@@ -180,13 +180,13 @@ static int ugreen_led_get_state_robust(
 
 static void ugreen_led_turn_on_or_off_unlock(struct ugreen_led_array *priv, u8 led_id, bool on) {
 
-    if (priv->state[led_id].status == (on ? UGREEN_LED_STATE_ON : UGREEN_LED_STATE_OFF)) {
+    if (priv->state[led_id]->status == (on ? UGREEN_LED_STATE_ON : UGREEN_LED_STATE_OFF)) {
         return;
     }
 
     int rc = ugreen_led_change_state_robust(priv->client, led_id, 0x03, on ? 1 : 0, 0, 0, 0);
     if (rc == 0) {
-        priv->state[led_id].status = on ? UGREEN_LED_STATE_ON : UGREEN_LED_STATE_OFF;
+        priv->state[led_id]->status = on ? UGREEN_LED_STATE_ON : UGREEN_LED_STATE_OFF;
     } else if (verbose) {
         pr_err("failed to turn %d %s", led_id, on ? "on" : "off");
     }
@@ -194,7 +194,7 @@ static void ugreen_led_turn_on_or_off_unlock(struct ugreen_led_array *priv, u8 l
 
 static void ugreen_led_set_brightness_unlock(struct ugreen_led_array *priv, u8 led_id, enum led_brightness brightness) {
 
-    struct ugreen_led_state *state = priv->state + led_id;
+    struct ugreen_led_state *state = priv->state[led_id];
 
     if (brightness == 0) {
         ugreen_led_turn_on_or_off_unlock(priv, led_id, false);
@@ -215,7 +215,7 @@ static void ugreen_led_set_brightness_unlock(struct ugreen_led_array *priv, u8 l
 
 static void ugreen_led_set_color_unlock(struct ugreen_led_array *priv, u8 led_id, u8 r, u8 g, u8 b) {
 
-    struct ugreen_led_state *state = priv->state + led_id;
+    struct ugreen_led_state *state = priv->state[led_id];
 
     if (!r && !g && !b) {
         return ugreen_led_turn_on_or_off_unlock(priv, led_id, false);
@@ -236,7 +236,7 @@ static void ugreen_led_set_color_unlock(struct ugreen_led_array *priv, u8 led_id
 static void ugreen_led_set_blink_or_breath_unlock(struct ugreen_led_array *priv, u8 led_id, u16 t_on, u16 t_cycle, bool is_blink) {
 
     int rc;
-    struct ugreen_led_state *state = priv->state + led_id;
+    struct ugreen_led_state *state = priv->state[led_id];
     u8 led_status = is_blink ? UGREEN_LED_STATE_BLINK : UGREEN_LED_STATE_BREATH;
 
     if (state->t_on == t_on && state->t_cycle == t_cycle && state->status == led_status) {
@@ -429,18 +429,21 @@ static DEVICE_ATTR_RW(blink_type);
 static ssize_t status_show(struct device *dev, struct device_attribute *attr, char *buf) {
 
     struct led_classdev *cdev = dev_get_drvdata(dev);
-    struct ugreen_led_state state = *lcdev_to_ugreen_led_state(cdev);
+    struct ugreen_led_state *state = lcdev_to_ugreen_led_state(cdev);
 
-    mutex_lock(&state.priv->mutex);
-    int status = state.status;
+    mutex_lock(&state->priv->mutex);
+
+    int status = state->status;
     if (status >= ARRAY_SIZE(ugreen_led_state_name)) {
         status = UGREEN_LED_STATE_INVALID;
     }
-    ssize_t size = sprintf(buf, "%s %d %d %d %d %d %d\n", 
-            ugreen_led_state_name[state.status], (int)state.brightness, 
-            (int)state.r, (int)state.g, (int)state.b,
-            (int)state.t_on, (int)(state.t_cycle - state.t_on));
-    mutex_unlock(&state.priv->mutex);
+
+    ssize_t size = sprintf(buf, "%s %d %d %d %d %d %d\n",
+            ugreen_led_state_name[status], (int)state->brightness,
+            (int)state->r, (int)state->g, (int)state->b,
+            (int)state->t_on, (int)(state->t_cycle - state->t_on));
+
+    mutex_unlock(&state->priv->mutex);
 
     return size;
 }
@@ -474,12 +477,20 @@ static int ugreen_led_probe(struct i2c_client *client) {
     // probe and initialize leds
     for (int i = 0; i < UGREEN_MAX_LED_NUMBER; ++i) {
 
-        priv->state[i].priv = priv;
-        priv->state[i].led_id = i;
+        /* One allocation per LED. An oversized struct led_classdev then runs
+         * into allocator padding, where slab debugging and KASAN can see it,
+         * rather than over the next LED's private pointer. */
+        priv->state[i] = devm_kzalloc(&client->dev, sizeof(struct ugreen_led_state), GFP_KERNEL);
+        if (!priv->state[i]) {
+            return -ENOMEM;
+        }
 
-        ugreen_led_get_state_robust(client, i, priv->state + i);
+        priv->state[i]->priv = priv;
+        priv->state[i]->led_id = i;
 
-        struct ugreen_led_state *state = priv->state + i;
+        ugreen_led_get_state_robust(client, i, priv->state[i]);
+
+        struct ugreen_led_state *state = priv->state[i];
         if (state->status != UGREEN_LED_STATE_INVALID) {
 
             pr_info("probed led id %d, status %d, rgb 0x%02x%02x%02x, "
@@ -504,7 +515,7 @@ static int ugreen_led_probe(struct i2c_client *client) {
 
     for (int i = 0; i < UGREEN_MAX_LED_NUMBER; ++i) {
 
-        struct ugreen_led_state *state = priv->state + i;
+        struct ugreen_led_state *state = priv->state[i];
         if (state->status == UGREEN_LED_STATE_INVALID)
             continue;
 
@@ -545,7 +556,7 @@ ugreen_led_remove(struct i2c_client *client) {
 
     for (int i = 0; i < UGREEN_MAX_LED_NUMBER; ++i) {
 
-        struct ugreen_led_state *state = priv->state + i;
+        struct ugreen_led_state *state = priv->state[i];
         if (state->status == UGREEN_LED_STATE_INVALID)
             continue;
 
