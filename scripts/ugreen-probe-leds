@@ -33,9 +33,9 @@ if ! lsmod | grep -q led_ugreen; then
     fi
 fi
 
-i2c_dev=$(i2cdetect -l | grep "SMBus I801 adapter" | grep -Po "i2c-\d+")
+i2c_dev=$(i2cdetect -l | grep "SMBus I801 adapter" | grep -Po "i2c-\d+" || true)
 
-if [ $? = 0 ]; then 
+if [ -n "$i2c_dev" ]; then
         echo "Found I2C device /dev/${i2c_dev}"
         dev_path=/sys/bus/i2c/devices/$i2c_dev/${i2c_dev/i2c-/}-003a
         if [ ! -d $dev_path ]; then
