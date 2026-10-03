@@ -1,6 +1,10 @@
 *.o
 dx4600_leds_cli
 ugreen_leds_cli
+ugreen-ledd
+ugreen-ledd-test
+ugreen-bpf-load-test
+ebpf/build/
 run.sh
 zpool_leds.sh
 

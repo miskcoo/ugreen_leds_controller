@@ -1,0 +1,14 @@
+[Unit]
+Description=UGREEN event-driven LED daemon for %I
+After=local-fs.target network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStartPre=/usr/sbin/modprobe i2c-dev
+ExecStart=/usr/bin/ugreen-ledd --bpf-object /usr/lib/ugreen-leds/ugreen_led.bpf.o -i %I
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
