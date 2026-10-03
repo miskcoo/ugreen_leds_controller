@@ -2,6 +2,120 @@
 
 set -e
 
+declare -a i2c_candidates=()
+
+add_i2c_candidate() {
+    local candidate="$1"
+    local existing
+
+    [[ "$candidate" =~ ^i2c-[0-9]+$ ]] || return 0
+    for existing in "${i2c_candidates[@]}"; do
+        [ "$existing" = "$candidate" ] && return 0
+    done
+    i2c_candidates+=("$candidate")
+}
+
+led_mcu_responds() {
+    local bus="$1"
+    local response
+    local -a bytes
+    local checksum=0
+    local expected_checksum
+    local i
+
+    response=$(i2cget -y "$bus" 0x3a 0x81 i 0x0b 2>/dev/null) || return 1
+    read -r -a bytes <<< "$response"
+    [ "${#bytes[@]}" -ge 11 ] || return 1
+
+    for ((i = 0; i < 11; ++i)); do
+        [[ "${bytes[$i]}" =~ ^0x[0-9a-fA-F]{2}$ ]] || return 1
+    done
+
+    for ((i = 0; i < 9; ++i)); do
+        checksum=$((checksum + bytes[i]))
+    done
+    expected_checksum=$(((bytes[9] << 8) | bytes[10]))
+
+    [ "$((checksum & 0xffff))" -eq "$expected_checksum" ]
+}
+
+find_i2c_dev() {
+    local acpi_dev
+    local acpi_path
+    local candidate
+    local bus
+    local dev_path
+    local registered_name
+    local selected_registered_dev=""
+
+    i2c_candidates=()
+
+    # DXP2800 SUB2 boards describe the HT32F522 LED MCU below a DesignWare
+    # adapter in ACPI. Prefer that exact adapter over matching a controller by
+    # its generic name.
+    for acpi_dev in /sys/bus/i2c/devices/i2c-HT32F522:*; do
+        [ -e "$acpi_dev" ] || continue
+        acpi_path=$(readlink -f "$acpi_dev" 2>/dev/null || true)
+        [ -n "$acpi_path" ] || continue
+        add_i2c_candidate "$(basename "$(dirname "$acpi_path")")"
+    done
+
+    # Preserve the existing path for older DX/DXP boards.
+    while IFS= read -r candidate; do
+        add_i2c_candidate "$candidate"
+    done < <(i2cdetect -l | awk '/SMBus I801 adapter/ { print $1 }')
+
+    # ACPI enumeration may differ between distributions. DesignWare adapters
+    # are safe candidates as long as the response is validated below.
+    while IFS= read -r candidate; do
+        add_i2c_candidate "$candidate"
+    done < <(i2cdetect -l | awk '/Synopsys DesignWare I2C adapter/ { print $1 }')
+
+    # Clear clients left on a non-responsive bus by an older version of this
+    # script. Keep an already working client and avoid addresses owned by any
+    # other driver.
+    for candidate in "${i2c_candidates[@]}"; do
+        bus=${candidate#i2c-}
+        dev_path="/sys/bus/i2c/devices/${bus}-003a"
+        [ -d "$dev_path" ] || continue
+
+        registered_name=$(cat "$dev_path/name" 2>/dev/null || true)
+        if [ "$registered_name" != "led-ugreen" ]; then
+            echo "Skipping /dev/${candidate}: address 0x3a is registered as ${registered_name:-unknown}" >&2
+            continue
+        fi
+
+        if [ -d "$dev_path/leds/power" ]; then
+            [ -n "$selected_registered_dev" ] || selected_registered_dev="$candidate"
+            continue
+        fi
+
+        echo "Removing non-responsive led-ugreen client from /dev/${candidate}" >&2
+        echo 0x3a > "/sys/bus/i2c/devices/${candidate}/delete_device"
+    done
+
+    if [ -n "$selected_registered_dev" ]; then
+        echo "$selected_registered_dev"
+        return 0
+    fi
+
+    # Register the driver only after a read-only status query confirms that the
+    # candidate reaches the LED MCU. The first nine bytes are covered by the
+    # final two-byte checksum.
+    for candidate in "${i2c_candidates[@]}"; do
+        bus=${candidate#i2c-}
+        dev_path="/sys/bus/i2c/devices/${bus}-003a"
+        [ -d "$dev_path" ] && continue
+
+        if led_mcu_responds "$bus"; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 # Load i2c-dev module
 { lsmod | grep i2c_dev ; } || modprobe -v i2c-dev
 
@@ -33,17 +147,19 @@ if ! lsmod | grep -q led_ugreen; then
     fi
 fi
 
-i2c_dev=$(i2cdetect -l | grep "SMBus I801 adapter" | grep -Po "i2c-\d+")
+i2c_dev=$(find_i2c_dev || true)
 
-if [ $? = 0 ]; then 
+if [ -n "$i2c_dev" ]; then
         echo "Found I2C device /dev/${i2c_dev}"
-        dev_path=/sys/bus/i2c/devices/$i2c_dev/${i2c_dev/i2c-/}-003a
-        if [ ! -d $dev_path ]; then
-            echo "led-ugreen 0x3a" > /sys/bus/i2c/devices/${i2c_dev}/new_device
-        elif [ "$(cat $dev_path/name)" != "led-ugreen" ]; then
-            echo "ERROR: the device ${i2c_dev/i2c-/}-003a has been registered as $(cat $dev_path/name)"
+        bus=${i2c_dev#i2c-}
+        dev_path="/sys/bus/i2c/devices/${bus}-003a"
+        if [ ! -d "$dev_path" ]; then
+            echo "led-ugreen 0x3a" > "/sys/bus/i2c/devices/${i2c_dev}/new_device"
+        elif [ "$(cat "$dev_path/name")" != "led-ugreen" ]; then
+            echo "ERROR: the device ${bus}-003a has been registered as $(cat "$dev_path/name")"
             exit 1
         fi
 else
-        echo "I2C device not found!"
+        echo "ERROR: UGREEN LED MCU did not respond at address 0x3a"
+        exit 1
 fi
